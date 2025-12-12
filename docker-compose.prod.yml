@@ -1,8 +1,6 @@
-version: '3.8'
-
 services:
   voxcpm:
-    build: .
+    image: neosun/voxcpm-allinone:1.0.0
     container_name: voxcpm-service
     runtime: nvidia
     environment:
@@ -13,11 +11,11 @@ services:
     ports:
       - "0.0.0.0:${PORT:-7861}:7861"
     volumes:
-      - ./models:/app/models
       - /tmp/voxcpm-tts/uploads:/app/uploads
       - /tmp/voxcpm-tts/outputs:/app/outputs
-      - ~/.cache/huggingface:/root/.cache/huggingface
-      - ~/.cache/modelscope:/root/.cache/modelscope
+      - voxcpm-models:/app/models
+      - voxcpm-hf-cache:/root/.cache/huggingface
+      - voxcpm-ms-cache:/root/.cache/modelscope
     restart: unless-stopped
     deploy:
       resources:
@@ -26,3 +24,8 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+
+volumes:
+  voxcpm-models:
+  voxcpm-hf-cache:
+  voxcpm-ms-cache:

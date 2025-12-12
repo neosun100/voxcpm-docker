@@ -1,5 +1,10 @@
+# Git
 .git
 .github
+.gitignore
+.gitattributes
+
+# Python
 __pycache__
 *.pyc
 *.pyo
@@ -10,13 +15,50 @@ __pycache__
 *.egg-info
 dist
 build
+.pytest_cache
+.mypy_cache
+.tox
+.coverage
+
+# Virtual environments
 .env
 .venv
 venv
+env
+
+# Models and data (will be downloaded)
 models/*
+!models/.gitkeep
 outputs/*
+!outputs/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# Audio files
 *.wav
 *.mp3
+*.flac
+*.ogg
+
+# IDE
 .DS_Store
 .vscode
 .idea
+*.swp
+*.swo
+*~
+
+# Documentation (keep essential only)
+docs/
+examples/*.wav
+assets/
+
+# Test files
+test_*.py
+test_*.sh
+*.log
+
+# Temporary
+*.tmp
+*.bak
+.cache

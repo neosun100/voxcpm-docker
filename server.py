@@ -11,8 +11,10 @@ from gpu_manager import gpu_manager
 import voxcpm
 
 PORT = int(os.getenv("PORT", "7861"))
-OUTPUT_DIR = Path("outputs")
+OUTPUT_DIR = Path("/app/outputs")
+UPLOAD_DIR = Path("/app/uploads")
 OUTPUT_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 # FastAPI app
 app = FastAPI(title="VoxCPM API", version="1.5.0")
@@ -31,7 +33,7 @@ def load_model():
 @app.get("/health")
 def health():
     """Health check endpoint"""
-    return {"status": "healthy", "model_loaded": gpu_manager.model is not None}
+    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded()}
 
 @app.post("/api/tts")
 async def tts(
@@ -52,7 +54,7 @@ async def tts(
     try:
         prompt_wav_path = None
         if prompt_audio:
-            prompt_wav_path = OUTPUT_DIR / f"prompt_{prompt_audio.filename}"
+            prompt_wav_path = UPLOAD_DIR / f"prompt_{int(time.time())}_{prompt_audio.filename}"
             with open(prompt_wav_path, "wb") as f:
                 f.write(await prompt_audio.read())
         
@@ -93,7 +95,7 @@ def gpu_status():
     import torch
     if torch.cuda.is_available():
         return {
-            "model_loaded": gpu_manager.model is not None,
+            "model_loaded": gpu_manager.is_loaded(),
             "memory_allocated_gb": round(torch.cuda.memory_allocated() / 1024**3, 2),
             "memory_reserved_gb": round(torch.cuda.memory_reserved() / 1024**3, 2),
             "device_name": torch.cuda.get_device_name(0)
@@ -187,7 +189,7 @@ def create_ui():
         def get_gpu_status():
             import torch
             if torch.cuda.is_available():
-                return f"Model Loaded: {gpu_manager.model is not None}\nMemory: {torch.cuda.memory_allocated()/1024**3:.2f}GB"
+                return f"Model Loaded: {gpu_manager.is_loaded()}\nMemory: {torch.cuda.memory_allocated()/1024**3:.2f}GB"
             return "CUDA not available"
         
         synthesize_btn.click(

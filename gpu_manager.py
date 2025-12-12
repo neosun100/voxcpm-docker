@@ -22,6 +22,10 @@ class GPUManager:
             self.last_used = time.time()
             return self.model
     
+    def is_loaded(self) -> bool:
+        """Check if model is loaded"""
+        return self.model is not None
+    
     def force_offload(self):
         with self.lock:
             if self.model is not None:
