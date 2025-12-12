@@ -1,0 +1,342 @@
+import os
+import time
+import soundfile as sf
+from pathlib import Path
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+import gradio as gr
+import uvicorn
+from gpu_manager import gpu_manager
+import voxcpm
+import torch
+
+PORT = int(os.getenv("PORT", "7861"))
+OUTPUT_DIR = Path("/app/outputs")
+UPLOAD_DIR = Path("/app/uploads")
+OUTPUT_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR.mkdir(exist_ok=True)
+
+# Performance optimization: reduce default timesteps
+DEFAULT_TIMESTEPS = 5  # Reduced from 10 for faster generation
+
+# FastAPI app
+app = FastAPI(title="VoxCPM API", version="1.5.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def load_model():
+    model_path = os.getenv("HF_REPO_ID", "openbmb/VoxCPM1.5")
+    model = voxcpm.VoxCPM.from_pretrained(model_path)
+    # Performance optimization: enable torch compile if available
+    if hasattr(torch, 'compile') and torch.cuda.is_available():
+        try:
+            model.tts_model = torch.compile(model.tts_model, mode="reduce-overhead")
+        except:
+            pass
+    return model
+
+@app.get("/health")
+def health():
+    """Health check endpoint"""
+    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded()}
+
+@app.post("/api/tts")
+async def tts(
+    text: str = Form(...),
+    prompt_audio: UploadFile = File(None),
+    prompt_text: str = Form(None),
+    cfg_value: float = Form(2.0),
+    inference_timesteps: int = Form(DEFAULT_TIMESTEPS),  # Optimized default
+    min_len: int = Form(2),
+    max_len: int = Form(4096),
+    normalize: bool = Form(False),
+    denoise: bool = Form(False),
+    retry_badcase: bool = Form(False),  # Disabled for speed
+    retry_badcase_max_times: int = Form(3),
+    retry_badcase_ratio_threshold: float = Form(6.0),
+):
+    """Text-to-Speech API"""
+    try:
+        prompt_wav_path = None
+        if prompt_audio:
+            prompt_wav_path = UPLOAD_DIR / f"prompt_{int(time.time())}_{prompt_audio.filename}"
+            with open(prompt_wav_path, "wb") as f:
+                f.write(await prompt_audio.read())
+        
+        model = gpu_manager.get_model(load_model)
+        
+        wav = model.generate(
+            text=text,
+            prompt_wav_path=str(prompt_wav_path) if prompt_wav_path else None,
+            prompt_text=prompt_text,
+            cfg_value=cfg_value,
+            inference_timesteps=inference_timesteps,
+            min_len=min_len,
+            max_len=max_len,
+            normalize=normalize,
+            denoise=denoise,
+            retry_badcase=retry_badcase,
+            retry_badcase_max_times=retry_badcase_max_times,
+            retry_badcase_ratio_threshold=retry_badcase_ratio_threshold,
+        )
+        
+        output_path = OUTPUT_DIR / f"output_{int(time.time())}.wav"
+        sf.write(output_path, wav, model.tts_model.sample_rate)
+        
+        return FileResponse(output_path, media_type="audio/wav")
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/gpu/offload")
+def gpu_offload():
+    """Offload model from GPU"""
+    gpu_manager.force_offload()
+    return {"status": "offloaded"}
+
+@app.get("/api/gpu/status")
+def gpu_status():
+    """Get GPU status"""
+    import torch
+    if torch.cuda.is_available():
+        return {
+            "model_loaded": gpu_manager.is_loaded(),
+            "memory_allocated_gb": round(torch.cuda.memory_allocated() / 1024**3, 2),
+            "memory_reserved_gb": round(torch.cuda.memory_reserved() / 1024**3, 2),
+            "device_name": torch.cuda.get_device_name(0)
+        }
+    return {"error": "CUDA not available"}
+
+# Gradio UI with bilingual support
+def create_ui():
+    # Language texts
+    texts = {
+        'en': {
+            'title': '🎙️ VoxCPM - Text-to-Speech Service',
+            'desc': 'High-quality neural text-to-speech with voice cloning capabilities',
+            'tab_synth': '🎤 Voice Synthesis',
+            'tab_clone': '🎭 Voice Cloning',
+            'tab_gpu': '🖥️ GPU Status',
+            'text_label': 'Text to Synthesize',
+            'text_placeholder': 'Enter text here...',
+            'ref_audio': 'Reference Audio (for voice cloning)',
+            'ref_text': 'Reference Transcript (optional)',
+            'ref_text_placeholder': 'Transcript of reference audio...',
+            'advanced': '⚙️ Advanced Settings',
+            'cfg_label': 'CFG Value (Guidance strength, higher = more controlled)',
+            'steps_label': 'Inference Steps (5=fastest, 10=balanced, 20=best quality)',
+            'steps_tip': '💡 Tip: Use 5 steps for fast generation, 10 for balanced quality/speed',
+            'normalize': 'Normalize Text',
+            'denoise': 'Denoise Audio',
+            'retry': 'Auto Retry on Errors',
+            'btn_synth': '🎵 Generate Speech',
+            'btn_clone': '🎭 Clone Voice',
+            'btn_refresh': '🔄 Refresh Status',
+            'btn_offload': '🗑️ Offload Model from GPU',
+            'output': 'Generated Audio',
+            'gpu_status': 'GPU Status',
+            'usage_guide': '''
+### 📖 Usage Guide
+**Voice Synthesis**: Enter text and click Generate
+**Voice Cloning**: Upload reference audio + enter text
+**Speed Tips**: 
+- Use 5 inference steps for 2-3x faster generation
+- Disable "Auto Retry" for faster processing
+- Keep text under 100 characters for best speed
+            '''
+        },
+        'zh': {
+            'title': '🎙️ VoxCPM - 文本转语音服务',
+            'desc': '高质量神经网络文本转语音，支持声音克隆',
+            'tab_synth': '🎤 语音合成',
+            'tab_clone': '🎭 声音克隆',
+            'tab_gpu': '🖥️ GPU 状态',
+            'text_label': '要合成的文本',
+            'text_placeholder': '在此输入文本...',
+            'ref_audio': '参考音频（用于声音克隆）',
+            'ref_text': '参考文本（可选）',
+            'ref_text_placeholder': '参考音频的文字内容...',
+            'advanced': '⚙️ 高级设置',
+            'cfg_label': 'CFG 值（引导强度，越高越可控）',
+            'steps_label': '推理步数（5=最快，10=平衡，20=最佳质量）',
+            'steps_tip': '💡 提示：使用 5 步可快速生成，10 步平衡质量和速度',
+            'normalize': '文本规范化',
+            'denoise': '音频降噪',
+            'retry': '错误自动重试',
+            'btn_synth': '🎵 生成语音',
+            'btn_clone': '🎭 克隆声音',
+            'btn_refresh': '🔄 刷新状态',
+            'btn_offload': '🗑️ 从 GPU 卸载模型',
+            'output': '生成的音频',
+            'gpu_status': 'GPU 状态',
+            'usage_guide': '''
+### 📖 使用指南
+**语音合成**：输入文本后点击生成
+**声音克隆**：上传参考音频 + 输入文本
+**加速技巧**：
+- 使用 5 个推理步数可提速 2-3 倍
+- 关闭"错误自动重试"可加快处理
+- 文本保持在 100 字以内速度最快
+            '''
+        }
+    }
+    
+    with gr.Blocks(title="VoxCPM TTS", theme=gr.themes.Soft()) as demo:
+        lang_state = gr.State("zh")  # Default to Chinese
+        
+        with gr.Row():
+            gr.Markdown("# " + texts['zh']['title'])
+            lang_btn = gr.Button("🌐 Switch to English", size="sm")
+        
+        gr.Markdown(texts['zh']['desc'])
+        
+        with gr.Tab(texts['zh']['tab_synth']) as tab1:
+            with gr.Row():
+                with gr.Column(scale=2):
+                    text_input = gr.Textbox(
+                        label=texts['zh']['text_label'], 
+                        lines=4, 
+                        placeholder=texts['zh']['text_placeholder']
+                    )
+                    gr.Markdown(texts['zh']['usage_guide'])
+                
+                with gr.Column(scale=1):
+                    with gr.Accordion(texts['zh']['advanced'], open=True):
+                        cfg_value = gr.Slider(1.0, 5.0, value=2.0, step=0.1, label=texts['zh']['cfg_label'])
+                        inference_steps = gr.Slider(5, 20, value=DEFAULT_TIMESTEPS, step=1, label=texts['zh']['steps_label'])
+                        gr.Markdown(texts['zh']['steps_tip'])
+                        normalize = gr.Checkbox(label=texts['zh']['normalize'], value=False)
+                        denoise = gr.Checkbox(label=texts['zh']['denoise'], value=False)
+                        retry_badcase = gr.Checkbox(label=texts['zh']['retry'], value=False)
+                    
+                    synthesize_btn = gr.Button(texts['zh']['btn_synth'], variant="primary", size="lg")
+            
+            audio_output = gr.Audio(label=texts['zh']['output'])
+        
+        with gr.Tab(texts['zh']['tab_clone']) as tab2:
+            with gr.Row():
+                with gr.Column(scale=2):
+                    clone_text = gr.Textbox(
+                        label=texts['zh']['text_label'], 
+                        lines=3, 
+                        placeholder=texts['zh']['text_placeholder']
+                    )
+                    prompt_audio = gr.Audio(label=texts['zh']['ref_audio'], type="filepath")
+                    prompt_text = gr.Textbox(
+                        label=texts['zh']['ref_text'], 
+                        lines=2, 
+                        placeholder=texts['zh']['ref_text_placeholder']
+                    )
+                
+                with gr.Column(scale=1):
+                    with gr.Accordion(texts['zh']['advanced'], open=True):
+                        clone_cfg = gr.Slider(1.0, 5.0, value=2.0, step=0.1, label=texts['zh']['cfg_label'])
+                        clone_steps = gr.Slider(5, 20, value=DEFAULT_TIMESTEPS, step=1, label=texts['zh']['steps_label'])
+                        gr.Markdown(texts['zh']['steps_tip'])
+                        clone_normalize = gr.Checkbox(label=texts['zh']['normalize'], value=False)
+                        clone_denoise = gr.Checkbox(label=texts['zh']['denoise'], value=False)
+                        clone_retry = gr.Checkbox(label=texts['zh']['retry'], value=False)
+                    
+                    clone_btn = gr.Button(texts['zh']['btn_clone'], variant="primary", size="lg")
+            
+            clone_output = gr.Audio(label=texts['zh']['output'])
+        
+        with gr.Tab(texts['zh']['tab_gpu']) as tab3:
+            gpu_info = gr.Textbox(label=texts['zh']['gpu_status'], lines=5, interactive=False)
+            with gr.Row():
+                refresh_btn = gr.Button(texts['zh']['btn_refresh'])
+                offload_btn = gr.Button(texts['zh']['btn_offload'])
+        
+        # Language switch function
+        def switch_language(current_lang):
+            new_lang = 'en' if current_lang == 'zh' else 'zh'
+            t = texts[new_lang]
+            return (
+                new_lang,
+                "🌐 切换到中文" if new_lang == 'en' else "🌐 Switch to English",
+                gr.update(label=t['text_label'], placeholder=t['text_placeholder']),
+                gr.update(label=t['text_label'], placeholder=t['text_placeholder']),
+                gr.update(label=t['ref_audio']),
+                gr.update(label=t['ref_text'], placeholder=t['ref_text_placeholder']),
+                gr.update(value=t['btn_synth']),
+                gr.update(value=t['btn_clone']),
+                gr.update(value=t['btn_refresh']),
+                gr.update(value=t['btn_offload']),
+            )
+        
+        lang_btn.click(
+            switch_language,
+            inputs=[lang_state],
+            outputs=[lang_state, lang_btn, text_input, clone_text, prompt_audio, prompt_text, 
+                    synthesize_btn, clone_btn, refresh_btn, offload_btn]
+        )
+        
+        def synthesize(text, cfg, steps, norm, den, retry):
+            model = gpu_manager.get_model(load_model)
+            wav = model.generate(
+                text=text, 
+                cfg_value=cfg, 
+                inference_timesteps=steps,
+                normalize=norm, 
+                denoise=den,
+                retry_badcase=retry
+            )
+            path = OUTPUT_DIR / f"synth_{int(time.time())}.wav"
+            sf.write(path, wav, model.tts_model.sample_rate)
+            return str(path)
+        
+        def clone_voice(text, audio, transcript, cfg, steps, norm, den, retry):
+            model = gpu_manager.get_model(load_model)
+            wav = model.generate(
+                text=text, 
+                prompt_wav_path=audio, 
+                prompt_text=transcript,
+                cfg_value=cfg, 
+                inference_timesteps=steps,
+                normalize=norm,
+                denoise=den,
+                retry_badcase=retry
+            )
+            path = OUTPUT_DIR / f"clone_{int(time.time())}.wav"
+            sf.write(path, wav, model.tts_model.sample_rate)
+            return str(path)
+        
+        def get_gpu_status():
+            import torch
+            if torch.cuda.is_available():
+                return f"Model Loaded: {gpu_manager.is_loaded()}\nMemory: {torch.cuda.memory_allocated()/1024**3:.2f}GB"
+            return "CUDA not available"
+        
+        synthesize_btn.click(
+            synthesize, 
+            [text_input, cfg_value, inference_steps, min_len, max_len, normalize, denoise, retry_badcase, retry_max_times, retry_threshold], 
+            audio_output
+        )
+        clone_btn.click(
+            clone_voice, 
+            [clone_text, prompt_audio, prompt_text, clone_cfg, clone_steps, clone_min_len, clone_max_len, clone_normalize, clone_denoise, clone_retry, clone_retry_max, clone_retry_threshold], 
+            clone_output
+        )
+        refresh_btn.click(get_gpu_status, None, gpu_info)
+        offload_btn.click(lambda: (gpu_manager.force_offload(), "Model offloaded"), None, gpu_info)
+    
+    return demo
+
+# Mount Gradio to FastAPI
+ui = create_ui()
+app = gr.mount_gradio_app(app, ui, path="/")
+
+if __name__ == '__main__':
+    print(f"🚀 Starting VoxCPM Server on 0.0.0.0:{PORT}")
+    print(f"📍 UI:      http://0.0.0.0:{PORT}")
+    print(f"📍 API:     http://0.0.0.0:{PORT}/api")
+    print(f"📍 Docs:    http://0.0.0.0:{PORT}/docs")
+    print(f"📍 Health:  http://0.0.0.0:{PORT}/health")
+    
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")

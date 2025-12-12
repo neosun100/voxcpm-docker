@@ -1,8 +1,8 @@
 FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 LABEL maintainer="neosun"
-LABEL version="1.0.0"
-LABEL description="VoxCPM All-in-One TTS Service with GPU support"
+LABEL version="1.0.1"
+LABEL description="VoxCPM All-in-One TTS Service with GPU support - Performance Optimized"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
