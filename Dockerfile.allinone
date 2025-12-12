@@ -1,14 +1,15 @@
 FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 LABEL maintainer="neosun"
-LABEL version="1.0.3"
+LABEL version="1.0.5"
 LABEL description="VoxCPM All-in-One TTS Service - Preload Models + Smart Cache"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     SETUPTOOLS_SCM_PRETEND_VERSION=1.5.0 \
-    CUDA_HOME=/usr/local/cuda
+    CUDA_HOME=/usr/local/cuda \
+    TORCH_COMPILE_DISABLE=1
 
 RUN apt-get update && apt-get install -y \
     python3.10 \

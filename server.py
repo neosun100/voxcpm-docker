@@ -49,7 +49,7 @@ def preload_models():
     print("🎉 All models preloaded successfully!")
 
 # FastAPI app
-app = FastAPI(title="VoxCPM API", version="1.0.4")
+app = FastAPI(title="VoxCPM API", version="1.0.5")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,7 +67,7 @@ def load_model():
 @app.get("/health")
 def health():
     """Health check endpoint"""
-    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.4"}
+    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.5"}
 
 @app.post("/api/tts")
 async def tts(
