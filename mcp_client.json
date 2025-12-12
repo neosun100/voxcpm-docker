@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "voxcpm": {
+      "command": "python3",
+      "args": ["/home/neo/upload/VoxCPM/mcp_server.py"],
+      "env": {
+        "GPU_IDLE_TIMEOUT": "600",
+        "HF_REPO_ID": "openbmb/VoxCPM1.5",
+        "CUDA_VISIBLE_DEVICES": "0"
+      }
+    }
+  }
+}

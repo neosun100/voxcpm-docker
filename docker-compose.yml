@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  voxcpm:
+    build: .
+    container_name: voxcpm-service
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=${NVIDIA_VISIBLE_DEVICES:-0}
+      - PORT=${PORT:-7861}
+      - GPU_IDLE_TIMEOUT=${GPU_IDLE_TIMEOUT:-60}
+      - HF_REPO_ID=${HF_REPO_ID:-openbmb/VoxCPM1.5}
+    ports:
+      - "0.0.0.0:${PORT:-7861}:7861"
+    volumes:
+      - ./models:/app/models
+      - ./outputs:/app/outputs
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      - ~/.cache/modelscope:/root/.cache/modelscope
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
