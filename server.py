@@ -32,8 +32,9 @@ def preload_models():
     global WHISPER_MODEL
     print("🔄 Preloading models to GPU...")
     
-    # Load VoxCPM model
-    model = load_model()
+    # Load VoxCPM model directly without compile
+    model_path = os.getenv("HF_REPO_ID", "openbmb/VoxCPM1.5")
+    model = voxcpm.VoxCPM.from_pretrained(model_path)
     gpu_manager.model = model
     print("✅ VoxCPM model loaded to GPU")
     
@@ -48,7 +49,7 @@ def preload_models():
     print("🎉 All models preloaded successfully!")
 
 # FastAPI app
-app = FastAPI(title="VoxCPM API", version="1.0.3")
+app = FastAPI(title="VoxCPM API", version="1.0.4")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,7 +67,7 @@ def load_model():
 @app.get("/health")
 def health():
     """Health check endpoint"""
-    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.3"}
+    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.4"}
 
 @app.post("/api/tts")
 async def tts(
@@ -447,7 +448,9 @@ def create_ui():
                         if WHISPER_MODEL is None:
                             import whisper
                             WHISPER_MODEL = whisper.load_model("base")
-                        result = WHISPER_MODEL.transcribe(audio, language="zh")
+                        # Handle Gradio file object
+                        audio_path = audio.name if hasattr(audio, 'name') else audio
+                        result = WHISPER_MODEL.transcribe(audio_path, language="zh")
                         transcript = result["text"]
                         cache_manager.set_whisper_cache(audio, transcript)
                         status_msg = f"✅ 自动识别参考文本: {transcript[:50]}..."
@@ -462,9 +465,12 @@ def create_ui():
             if model is None:
                 model = gpu_manager.get_model(load_model)
             
+            # Handle Gradio file object
+            audio_path = audio.name if hasattr(audio, 'name') else audio
+            
             wav = model.generate(
                 text=text, 
-                prompt_wav_path=audio, 
+                prompt_wav_path=audio_path, 
                 prompt_text=transcript,
                 cfg_value=cfg, 
                 inference_timesteps=steps,
