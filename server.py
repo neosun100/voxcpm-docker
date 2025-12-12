@@ -22,7 +22,7 @@ DEFAULT_TIMESTEPS = 5  # Reduced from 10 for 2x speed
 FAST_MODE_TIMESTEPS = 3  # Ultra-fast mode
 
 # FastAPI app
-app = FastAPI(title="VoxCPM API", version="1.0.1")
+app = FastAPI(title="VoxCPM API", version="1.0.2")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,7 +45,7 @@ def load_model():
 @app.get("/health")
 def health():
     """Health check endpoint"""
-    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.1"}
+    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.2"}
 
 @app.post("/api/tts")
 async def tts(
@@ -118,8 +118,8 @@ def gpu_status():
 def create_ui():
     with gr.Blocks(title="VoxCPM 语音合成", theme=gr.themes.Soft()) as demo:
         gr.Markdown("""
-        # 🎙️ VoxCPM 文本转语音服务 v1.0.1
-        ### 高质量神经网络语音合成，支持声音克隆 | 已优化性能，生成速度提升 2-3 倍
+        # 🎙️ VoxCPM 文本转语音服务 v1.0.2
+        ### 高质量神经网络语音合成，支持声音克隆 | 已优化性能，生成速度提升 2-3 倍 | 自动语音识别
         """)
         
         with gr.Tab("🎤 语音合成"):
@@ -195,7 +195,9 @@ def create_ui():
             gr.Markdown("""
             ### 📖 使用说明
             1. **上传参考音频**：选择一段 3-10 秒的清晰人声（支持 WAV/MP3）
-            2. **输入参考文本**（可选）：参考音频对应的文字内容，可提高克隆质量
+            2. **输入参考文本**（可选）：
+               - 如果不填写，系统会自动识别音频内容（使用 Whisper）
+               - 手动填写可以获得更好的克隆效果
             3. **输入目标文本**：要用克隆声音说的内容
             4. **选择速度模式**：同语音合成
             5. **点击克隆**：等待生成
@@ -203,8 +205,14 @@ def create_ui():
             💡 **克隆技巧**：
             - 参考音频要清晰、无背景噪音
             - 音频时长 3-10 秒最佳
-            - 提供参考文本可提高质量
+            - 系统支持自动识别参考文本（中文）
+            - 手动提供参考文本可提高质量
             - 目标文本不宜过长（100 字以内）
+            
+            🤖 **自动识别**：
+            - 如果不填写参考文本，系统会自动使用 Whisper 识别
+            - 识别结果会显示在状态信息中
+            - 识别需要额外 2-3 秒时间
             """)
             
             with gr.Row():
@@ -243,6 +251,7 @@ def create_ui():
                     clone_btn = gr.Button("🎭 开始克隆声音", variant="primary", size="lg")
             
             clone_output = gr.Audio(label="🔊 克隆的音频")
+            clone_status = gr.Textbox(label="状态信息", interactive=False)
         
         with gr.Tab("🖥️ GPU 状态"):
             gr.Markdown("""
@@ -363,7 +372,7 @@ def create_ui():
             - 在线演示: https://voxcpm-tts.aws.xin
             
             ---
-            **版本**: v1.0.1 | **更新日期**: 2025-12-12
+            **版本**: v1.0.2 | **更新日期**: 2025-12-13
             """)
         
         # Functions
@@ -393,14 +402,33 @@ def create_ui():
             return str(path)
         
         def clone_voice(text, audio, transcript, mode, cfg, norm, den, retry):
-            if not text.strip() or not audio:
-                return None
+            if not text.strip():
+                return None, "❌ 请输入目标文本"
+            if not audio:
+                return None, "❌ 请上传参考音频"
+            
             steps = get_steps_from_mode(mode)
             model = gpu_manager.get_model(load_model)
+            
+            # Auto transcribe if no transcript provided
+            if not transcript or not transcript.strip():
+                try:
+                    import whisper
+                    whisper_model = whisper.load_model("base")
+                    result = whisper_model.transcribe(audio, language="zh")
+                    transcript = result["text"]
+                    status_msg = f"✅ 自动识别参考文本: {transcript[:50]}..."
+                except Exception as e:
+                    # If ASR fails, try without transcript (VoxCPM can handle it)
+                    transcript = None
+                    status_msg = "⚠️ 未提供参考文本，使用音频特征进行克隆"
+            else:
+                status_msg = f"✅ 使用提供的参考文本: {transcript[:50]}..."
+            
             wav = model.generate(
                 text=text, 
                 prompt_wav_path=audio, 
-                prompt_text=transcript if transcript else None,
+                prompt_text=transcript,
                 cfg_value=cfg, 
                 inference_timesteps=steps,
                 normalize=norm,
@@ -409,7 +437,7 @@ def create_ui():
             )
             path = OUTPUT_DIR / f"clone_{int(time.time())}.wav"
             sf.write(path, wav, model.tts_model.sample_rate)
-            return str(path)
+            return str(path), status_msg
         
         def get_gpu_status():
             import torch
@@ -418,7 +446,7 @@ def create_ui():
 GPU 设备: {torch.cuda.get_device_name(0)}
 显存占用: {torch.cuda.memory_allocated()/1024**3:.2f} GB
 显存预留: {torch.cuda.memory_reserved()/1024**3:.2f} GB
-版本: v1.0.1"""
+版本: v1.0.2 (支持自动语音识别)"""
             return "CUDA 不可用"
         
         def offload_model():
@@ -436,7 +464,7 @@ GPU 设备: {torch.cuda.get_device_name(0)}
             clone_voice,
             inputs=[clone_text, prompt_audio, prompt_text, clone_speed_mode, 
                    clone_cfg, clone_normalize, clone_denoise, clone_retry],
-            outputs=clone_output
+            outputs=[clone_output, clone_status]
         )
         
         refresh_btn.click(get_gpu_status, outputs=gpu_info)

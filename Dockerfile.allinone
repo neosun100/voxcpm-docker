@@ -1,8 +1,8 @@
 FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 LABEL maintainer="neosun"
-LABEL version="1.0.1"
-LABEL description="VoxCPM All-in-One TTS Service with GPU support - Performance Optimized"
+LABEL version="1.0.2"
+LABEL description="VoxCPM All-in-One TTS Service with GPU support - Auto ASR"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -30,7 +30,7 @@ COPY README.md LICENSE ./
 # Install all dependencies
 RUN pip3 install --upgrade pip && \
     pip3 install . && \
-    pip3 install fastapi uvicorn[standard] python-multipart fastmcp websockets && \
+    pip3 install fastapi uvicorn[standard] python-multipart fastmcp websockets openai-whisper && \
     pip3 install --force-reinstall torch==2.5.1+cu121 torchaudio==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
 
 # Pre-download models (optional, comment out if you want smaller image)
