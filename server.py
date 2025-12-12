@@ -8,21 +8,47 @@ from fastapi.middleware.cors import CORSMiddleware
 import gradio as gr
 import uvicorn
 from gpu_manager import gpu_manager
+from cache_manager import cache_manager
 import voxcpm
 import torch
 
 PORT = int(os.getenv("PORT", "7861"))
 OUTPUT_DIR = Path("/app/outputs")
 UPLOAD_DIR = Path("/app/uploads")
+CACHE_DIR = Path("/app/cache")
 OUTPUT_DIR.mkdir(exist_ok=True)
 UPLOAD_DIR.mkdir(exist_ok=True)
+CACHE_DIR.mkdir(exist_ok=True)
 
 # Performance optimization
-DEFAULT_TIMESTEPS = 5  # Reduced from 10 for 2x speed
-FAST_MODE_TIMESTEPS = 3  # Ultra-fast mode
+DEFAULT_TIMESTEPS = 5
+FAST_MODE_TIMESTEPS = 3
+
+# Preload models on startup
+WHISPER_MODEL = None
+
+def preload_models():
+    """Preload all models to GPU on startup"""
+    global WHISPER_MODEL
+    print("🔄 Preloading models to GPU...")
+    
+    # Load VoxCPM model
+    model = load_model()
+    gpu_manager.model = model
+    print("✅ VoxCPM model loaded to GPU")
+    
+    # Load Whisper model
+    try:
+        import whisper
+        WHISPER_MODEL = whisper.load_model("base")
+        print("✅ Whisper model loaded")
+    except Exception as e:
+        print(f"⚠️  Whisper model load failed: {e}")
+    
+    print("🎉 All models preloaded successfully!")
 
 # FastAPI app
-app = FastAPI(title="VoxCPM API", version="1.0.2")
+app = FastAPI(title="VoxCPM API", version="1.0.3")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,7 +71,7 @@ def load_model():
 @app.get("/health")
 def health():
     """Health check endpoint"""
-    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.2"}
+    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.3"}
 
 @app.post("/api/tts")
 async def tts(
@@ -118,8 +144,8 @@ def gpu_status():
 def create_ui():
     with gr.Blocks(title="VoxCPM 语音合成", theme=gr.themes.Soft()) as demo:
         gr.Markdown("""
-        # 🎙️ VoxCPM 文本转语音服务 v1.0.2
-        ### 高质量神经网络语音合成，支持声音克隆 | 已优化性能，生成速度提升 2-3 倍 | 自动语音识别
+        # 🎙️ VoxCPM 文本转语音服务 v1.0.3
+        ### 高质量神经网络语音合成 | 启动预加载 | 智能缓存 | 极速生成
         """)
         
         with gr.Tab("🎤 语音合成"):
@@ -388,7 +414,12 @@ def create_ui():
             if not text.strip():
                 return None
             steps = get_steps_from_mode(mode)
-            model = gpu_manager.get_model(load_model)
+            
+            # Use preloaded model
+            model = gpu_manager.model
+            if model is None:
+                model = gpu_manager.get_model(load_model)
+            
             wav = model.generate(
                 text=text, 
                 cfg_value=cfg, 
@@ -408,22 +439,33 @@ def create_ui():
                 return None, "❌ 请上传参考音频"
             
             steps = get_steps_from_mode(mode)
-            model = gpu_manager.get_model(load_model)
             
-            # Auto transcribe if no transcript provided
+            # Check cache for transcription
             if not transcript or not transcript.strip():
-                try:
-                    import whisper
-                    whisper_model = whisper.load_model("base")
-                    result = whisper_model.transcribe(audio, language="zh")
-                    transcript = result["text"]
-                    status_msg = f"✅ 自动识别参考文本: {transcript[:50]}..."
-                except Exception as e:
-                    # If ASR fails, try without transcript (VoxCPM can handle it)
-                    transcript = None
-                    status_msg = "⚠️ 未提供参考文本，使用音频特征进行克隆"
+                cached_text = cache_manager.get_whisper_cache(audio)
+                if cached_text:
+                    transcript = cached_text
+                    status_msg = f"✅ 使用缓存的参考文本: {transcript[:50]}..."
+                else:
+                    try:
+                        global WHISPER_MODEL
+                        if WHISPER_MODEL is None:
+                            import whisper
+                            WHISPER_MODEL = whisper.load_model("base")
+                        result = WHISPER_MODEL.transcribe(audio, language="zh")
+                        transcript = result["text"]
+                        cache_manager.set_whisper_cache(audio, transcript)
+                        status_msg = f"✅ 自动识别参考文本: {transcript[:50]}..."
+                    except Exception as e:
+                        transcript = None
+                        status_msg = "⚠️ 未提供参考文本，使用音频特征进行克隆"
             else:
                 status_msg = f"✅ 使用提供的参考文本: {transcript[:50]}..."
+            
+            # Use preloaded model
+            model = gpu_manager.model
+            if model is None:
+                model = gpu_manager.get_model(load_model)
             
             wav = model.generate(
                 text=text, 
@@ -446,7 +488,7 @@ def create_ui():
 GPU 设备: {torch.cuda.get_device_name(0)}
 显存占用: {torch.cuda.memory_allocated()/1024**3:.2f} GB
 显存预留: {torch.cuda.memory_reserved()/1024**3:.2f} GB
-版本: v1.0.2 (支持自动语音识别)"""
+版本: v1.0.3 (启动预加载 + 智能缓存)"""
             return "CUDA 不可用"
         
         def offload_model():
@@ -483,4 +525,8 @@ if __name__ == "__main__":
     print("📍 API:     http://0.0.0.0:{}/api".format(PORT))
     print("📍 Docs:    http://0.0.0.0:{}/docs".format(PORT))
     print("📍 Health:  http://0.0.0.0:{}/health".format(PORT))
+    
+    # Preload models before starting server
+    preload_models()
+    
     uvicorn.run(app, host="0.0.0.0", port=PORT)
