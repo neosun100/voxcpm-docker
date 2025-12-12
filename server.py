@@ -60,12 +60,7 @@ app.add_middleware(
 def load_model():
     model_path = os.getenv("HF_REPO_ID", "openbmb/VoxCPM1.5")
     model = voxcpm.VoxCPM.from_pretrained(model_path)
-    # Enable torch compile for faster inference
-    if hasattr(torch, 'compile') and torch.cuda.is_available():
-        try:
-            model.tts_model = torch.compile(model.tts_model, mode="reduce-overhead")
-        except:
-            pass
+    # Note: torch.compile disabled due to compatibility issues
     return model
 
 @app.get("/health")
