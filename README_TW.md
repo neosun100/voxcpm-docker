@@ -26,7 +26,7 @@
 
 ```bash
 # 拉取映像
-docker pull neosun/voxcpm-allinone:1.0.0
+docker pull neosun/voxcpm-allinone:1.0.8
 
 # 執行容器
 docker run -d \
@@ -36,7 +36,7 @@ docker run -d \
   -v /path/to/uploads:/app/uploads \
   -v /path/to/outputs:/app/outputs \
   --restart unless-stopped \
-  neosun/voxcpm-allinone:1.0.0
+  neosun/voxcpm-allinone:1.0.8
 ```
 
 ### 方式二：Docker Compose
@@ -46,7 +46,7 @@ version: '3.8'
 
 services:
   voxcpm:
-    image: neosun/voxcpm-allinone:1.0.0
+    image: neosun/voxcpm-allinone:1.0.8
     container_name: voxcpm-service
     runtime: nvidia
     environment:

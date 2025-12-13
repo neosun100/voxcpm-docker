@@ -26,7 +26,7 @@
 
 ```bash
 # 拉取镜像
-docker pull neosun/voxcpm-allinone:1.0.0
+docker pull neosun/voxcpm-allinone:1.0.8
 
 # 运行容器
 docker run -d \
@@ -36,7 +36,7 @@ docker run -d \
   -v /path/to/uploads:/app/uploads \
   -v /path/to/outputs:/app/outputs \
   --restart unless-stopped \
-  neosun/voxcpm-allinone:1.0.0
+  neosun/voxcpm-allinone:1.0.8
 ```
 
 ### 方式二：Docker Compose
@@ -46,7 +46,7 @@ version: '3.8'
 
 services:
   voxcpm:
-    image: neosun/voxcpm-allinone:1.0.0
+    image: neosun/voxcpm-allinone:1.0.8
     container_name: voxcpm-service
     runtime: nvidia
     environment:
@@ -258,7 +258,7 @@ docker exec -it voxcpm python3 -c "from huggingface_hub import snapshot_download
 
 ```bash
 # 更改端口映射
-docker run -d --name voxcpm --gpus all -p 8080:7861 neosun/voxcpm-allinone:1.0.0
+docker run -d --name voxcpm --gpus all -p 8080:7861 neosun/voxcpm-allinone:1.0.8
 ```
 
 ## 🤝 贡献指南
