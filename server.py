@@ -49,7 +49,7 @@ def preload_models():
     print("🎉 All models preloaded successfully!")
 
 # FastAPI app
-app = FastAPI(title="VoxCPM API", version="1.0.5")
+app = FastAPI(title="VoxCPM API", version="1.0.6")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -67,7 +67,7 @@ def load_model():
 @app.get("/health")
 def health():
     """Health check endpoint"""
-    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.5"}
+    return {"status": "healthy", "model_loaded": gpu_manager.is_loaded(), "version": "1.0.8"}
 
 @app.post("/api/tts")
 async def tts(
@@ -436,37 +436,46 @@ def create_ui():
             
             steps = get_steps_from_mode(mode)
             
+            # Handle Gradio file object and copy to persistent location
+            import shutil
+            audio_path = audio.name if hasattr(audio, 'name') else audio
+            
+            # Copy to uploads directory to prevent deletion
+            persistent_path = UPLOAD_DIR / f"ref_{int(time.time())}_{Path(audio_path).name}"
+            shutil.copy2(audio_path, persistent_path)
+            audio_path = str(persistent_path)
+            
             # Check cache for transcription
             if not transcript or not transcript.strip():
-                cached_text = cache_manager.get_whisper_cache(audio)
+                cached_text = cache_manager.get_whisper_cache(audio_path)
                 if cached_text:
                     transcript = cached_text
                     status_msg = f"✅ 使用缓存的参考文本: {transcript[:50]}..."
+                    print(f"📝 Cache hit: {transcript[:100]}")
                 else:
                     try:
                         global WHISPER_MODEL
                         if WHISPER_MODEL is None:
                             import whisper
                             WHISPER_MODEL = whisper.load_model("base")
-                        # Handle Gradio file object
-                        audio_path = audio.name if hasattr(audio, 'name') else audio
+                        print(f"🎤 Transcribing audio: {audio_path}")
                         result = WHISPER_MODEL.transcribe(audio_path, language="zh")
                         transcript = result["text"]
-                        cache_manager.set_whisper_cache(audio, transcript)
+                        cache_manager.set_whisper_cache(audio_path, transcript)
                         status_msg = f"✅ 自动识别参考文本: {transcript[:50]}..."
+                        print(f"📝 Transcribed: {transcript[:100]}")
                     except Exception as e:
                         transcript = None
                         status_msg = "⚠️ 未提供参考文本，使用音频特征进行克隆"
+                        print(f"⚠️ Transcription failed: {e}")
             else:
+                print(f"📝 User provided text: {transcript[:100]}")
                 status_msg = f"✅ 使用提供的参考文本: {transcript[:50]}..."
             
             # Use preloaded model
             model = gpu_manager.model
             if model is None:
                 model = gpu_manager.get_model(load_model)
-            
-            # Handle Gradio file object
-            audio_path = audio.name if hasattr(audio, 'name') else audio
             
             wav = model.generate(
                 text=text, 

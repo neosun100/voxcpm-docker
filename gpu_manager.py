@@ -6,10 +6,10 @@ import gc
 from typing import Optional, Callable, Any
 
 class GPUManager:
-    def __init__(self, idle_timeout: int = 60):
+    def __init__(self, idle_timeout: int = 0):
         self.model: Optional[Any] = None
         self.last_used = time.time()
-        self.idle_timeout = idle_timeout
+        self.idle_timeout = idle_timeout  # 0 = disabled
         self.lock = threading.Lock()
         self._monitor_thread = None
         self._stop_monitor = False
@@ -48,14 +48,9 @@ class GPUManager:
             self._monitor_thread.join()
     
     def _monitor_loop(self):
+        # Auto-offload disabled - model stays resident until manual offload
         while not self._stop_monitor:
-            time.sleep(10)
-            with self.lock:
-                if self.model is not None:
-                    idle_time = time.time() - self.last_used
-                    if idle_time > self.idle_timeout:
-                        print(f"⏰ Model idle for {idle_time:.0f}s, offloading...")
-                        self.force_offload()
+            time.sleep(60)
 
-gpu_manager = GPUManager(idle_timeout=int(os.getenv("GPU_IDLE_TIMEOUT", "60")))
-gpu_manager.start_monitor()
+gpu_manager = GPUManager(idle_timeout=0)  # 0 = auto-offload disabled
+# Monitor thread not started - no auto-offload
