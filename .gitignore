@@ -100,3 +100,6 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
+
+# WeChat article - do not push to GitHub
+wechat_article.md
