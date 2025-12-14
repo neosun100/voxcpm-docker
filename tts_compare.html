@@ -120,9 +120,18 @@
     <script>
         let results = { voxcpm: null, edge: null };
         let audioContext = null;
+        let activeSources = []; // 跟踪活动的音频源
         const SAMPLE_RATE = 44100;
         const FADE_SAMPLES = 2048; // 淡入采样数（约 46ms）
         const MIN_BUFFER_SIZE = 22050; // 最小缓冲 500ms 数据后再播放（减少 buffer 切换）
+        
+        // 停止所有正在播放的音频
+        function stopAllAudio() {
+            activeSources.forEach(source => {
+                try { source.stop(); } catch(e) {}
+            });
+            activeSources = [];
+        }
         
         function setStatus(id, msg, type) {
             const el = document.getElementById(id);
@@ -181,7 +190,10 @@
             if (!audioContext) audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
             if (audioContext.state === 'suspended') await audioContext.resume();
             
-            let nextPlayTime = audioContext.currentTime + 0.1; // 100ms 初始缓冲
+            // 停止之前的播放
+            stopAllAudio();
+            
+            let nextPlayTime = audioContext.currentTime + 0.15; // 150ms 初始缓冲
             let pendingBytes = new Uint8Array(0);
             let accumulatedSamples = []; // 累积采样用于初始缓冲
             
@@ -219,6 +231,11 @@
                     const source = audioContext.createBufferSource();
                     source.buffer = audioBuffer;
                     source.connect(audioContext.destination);
+                    activeSources.push(source); // 跟踪音频源
+                    source.onended = () => {
+                        const idx = activeSources.indexOf(source);
+                        if (idx > -1) activeSources.splice(idx, 1);
+                    };
                     
                     if (!playStartTime) {
                         playStartTime = performance.now();
