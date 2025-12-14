@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   voxcpm:
-    image: neosun/voxcpm-allinone:1.4.0-custom-voice
+    image: neosun/voxcpm-allinone:1.4.0
     container_name: voxcpm-service
     runtime: nvidia
     environment:
