@@ -313,8 +313,10 @@ async def create_voice(
         # 保存音频文件
         audio_path = VOICES_DIR / f"{voice_id}.wav"
         
-        # 如果不是 WAV 格式，转换为 WAV
-        if audio.filename.lower().endswith('.mp3'):
+        # 根据文件类型处理
+        filename = audio.filename.lower() if audio.filename else ""
+        if filename.endswith('.mp3'):
+            # MP3 转 WAV
             import subprocess
             import tempfile
             with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp:
@@ -327,9 +329,9 @@ async def create_voice(
             ], check=True, capture_output=True)
             os.unlink(tmp_path)
         else:
-            # 直接保存或转换 WAV
-            audio_data, sr = sf.read(io.BytesIO(content))
-            sf.write(str(audio_path), audio_data, sr, format='WAV', subtype='PCM_16')
+            # WAV 或其他格式，直接保存
+            with open(audio_path, 'wb') as f:
+                f.write(content)
         
         # 保存到数据库
         custom_voices = load_custom_voices()
