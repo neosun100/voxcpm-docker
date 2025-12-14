@@ -6,7 +6,28 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/OpenBMB/VoxCPM?style=social)](https://github.com/OpenBMB/VoxCPM)
 
-> **Production-ready Docker deployment for VoxCPM TTS service with GPU support, REST API, Web UI, and MCP protocol integration.**
+> **Production-ready Docker deployment for VoxCPM TTS service with GPU support, REST API, Web UI, MCP protocol, and OpenAI-compatible API.**
+
+## 🆕 NEW: OpenAI-Compatible TTS API
+
+VoxCPM now provides a **100% OpenAI-compatible TTS API**! Drop-in replacement for OpenAI's `/v1/audio/speech` endpoint.
+
+```bash
+# Just change the base URL - that's it!
+curl http://localhost:7861/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "Hello!", "voice": "alloy"}' \
+  --output speech.mp3
+```
+
+**Features:**
+- ✅ 11 voices (alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral, sage, verse)
+- ✅ 3 models (tts-1, tts-1-hd, gpt-4o-mini-tts)
+- ✅ 6 formats (mp3, wav, opus, aac, flac, pcm)
+- ✅ Streaming audio generation
+- ✅ Chinese & English support
+
+📚 **[OpenAI API Documentation](OPENAI_API.md)** | **[Quick Start Guide](OPENAI_QUICKSTART.md)**
 
 ## 📸 UI Preview
 
