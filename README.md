@@ -8,16 +8,16 @@
 
 > **Production-ready Docker deployment for VoxCPM TTS service with GPU support, REST API, Web UI, MCP protocol, and OpenAI-compatible API.**
 
-## 🆕 NEW: OpenAI-Compatible TTS API
+## 🆕 NEW: OpenAI-Compatible TTS API (⚡ Optimized!)
 
-VoxCPM now provides a **100% OpenAI-compatible TTS API**! Drop-in replacement for OpenAI's `/v1/audio/speech` endpoint.
+VoxCPM now provides a **100% OpenAI-compatible TTS API** with **Native API performance**! Drop-in replacement for OpenAI's `/v1/audio/speech` endpoint.
 
 ```bash
 # Just change the base URL - that's it!
 curl http://localhost:7861/v1/audio/speech \
   -H "Content-Type: application/json" \
-  -d '{"model": "tts-1", "input": "Hello!", "voice": "alloy"}' \
-  --output speech.mp3
+  -d '{"model": "tts-1", "input": "Hello!", "voice": "alloy", "response_format": "wav"}' \
+  --output speech.wav
 ```
 
 **Features:**
@@ -26,8 +26,15 @@ curl http://localhost:7861/v1/audio/speech \
 - ✅ 6 formats (mp3, wav, opus, aac, flac, pcm)
 - ✅ Streaming audio generation
 - ✅ Chinese & English support
+- ⚡ **64% faster first-byte latency** (0.25s → 0.09s)
+- ⚡ **Native API performance** (< 5% difference)
 
-📚 **[OpenAI API Documentation](OPENAI_API.md)** | **[Quick Start Guide](OPENAI_QUICKSTART.md)**
+**Performance (Optimized):**
+- First-byte latency: **0.09s** (use `response_format="wav"`)
+- Total time: **7.87s** for medium text (43% faster than MP3)
+- Identical to Native API performance
+
+📚 **[OpenAI API Documentation](OPENAI_API.md)** | **[Quick Start Guide](OPENAI_QUICKSTART.md)** | **[Optimization Report](OPTIMIZATION_REPORT.md)**
 
 ## 📸 UI Preview
 
@@ -51,7 +58,7 @@ curl http://localhost:7861/v1/audio/speech \
 
 ```bash
 # Pull the image
-docker pull neosun/voxcpm-allinone:1.0.8
+docker pull neosun/voxcpm-allinone:1.2.0-openai-optimized
 
 # Run the container
 docker run -d \
@@ -61,7 +68,7 @@ docker run -d \
   -v /path/to/uploads:/app/uploads \
   -v /path/to/outputs:/app/outputs \
   --restart unless-stopped \
-  neosun/voxcpm-allinone:1.0.8
+  neosun/voxcpm-allinone:1.2.0-openai-optimized
 ```
 
 ### Method 2: Docker Compose
@@ -71,7 +78,7 @@ version: '3.8'
 
 services:
   voxcpm:
-    image: neosun/voxcpm-allinone:1.0.8
+    image: neosun/voxcpm-allinone:1.2.0-openai-optimized
     container_name: voxcpm-service
     runtime: nvidia
     environment:
@@ -297,6 +304,23 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 5. Open a Pull Request
 
 ## 📝 Changelog
+
+### v1.2.0 (2025-12-14) - OpenAI API Optimization
+- ⚡ **64% latency reduction**: First-byte 0.25s → 0.09s
+- ⚡ **43% faster total time**: 13.90s → 7.87s (medium text)
+- ⚡ **Native API parity**: < 5% performance difference
+- 🎯 Direct WAV output (no MP3 conversion overhead)
+- 🎯 Eliminated ffmpeg process startup overhead
+- 📊 Comprehensive benchmark suite
+- 📚 Performance optimization documentation
+
+### v1.1.0 (2025-12-13) - OpenAI API Compatibility
+- ✅ 100% OpenAI-compatible `/v1/audio/speech` endpoint
+- ✅ 11 OpenAI voices support
+- ✅ 3 models (tts-1, tts-1-hd, gpt-4o-mini-tts)
+- ✅ 6 audio formats (mp3, wav, opus, aac, flac, pcm)
+- ✅ Streaming audio generation
+- 📚 Complete OpenAI API documentation
 
 ### v1.0.0 (2025-12-12)
 - ✅ Initial release
