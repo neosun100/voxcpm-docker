@@ -121,7 +121,7 @@ async def create_speech(request: SpeechRequest):
         else:  # gpt-4o-mini-tts
             inference_timesteps = 7  # Balanced
         
-        # Generate audio with streaming
+        # Generate audio with streaming - NO conversion for WAV/PCM
         def audio_stream():
             for wav_chunk in model.generate_streaming(
                 text=request.input,
@@ -135,22 +135,27 @@ async def create_speech(request: SpeechRequest):
                 denoise=False,
                 retry_badcase=False,
             ):
-                # Convert chunk to WAV bytes
-                buffer = io.BytesIO()
-                sf.write(buffer, wav_chunk, model.tts_model.sample_rate, format='WAV', subtype='PCM_16')
-                buffer.seek(0)
-                wav_data = buffer.read()
-                
-                # Convert to target format if needed
-                if request.response_format != "wav":
+                # Direct WAV output - no conversion
+                if request.response_format == "wav":
+                    buffer = io.BytesIO()
+                    sf.write(buffer, wav_chunk, model.tts_model.sample_rate, format='WAV', subtype='PCM_16')
+                    buffer.seek(0)
+                    yield buffer.read()
+                elif request.response_format == "pcm":
+                    # Raw PCM data
+                    yield wav_chunk.tobytes()
+                else:
+                    # For other formats, still need conversion (but warn it's slow)
+                    buffer = io.BytesIO()
+                    sf.write(buffer, wav_chunk, model.tts_model.sample_rate, format='WAV', subtype='PCM_16')
+                    buffer.seek(0)
+                    wav_data = buffer.read()
                     try:
                         converted = convert_audio_format(wav_data, model.tts_model.sample_rate, request.response_format)
                         yield converted
                     except Exception as e:
                         print(f"⚠️ Format conversion failed: {e}, falling back to WAV")
                         yield wav_data
-                else:
-                    yield wav_data
         
         # Determine media type
         media_types = {

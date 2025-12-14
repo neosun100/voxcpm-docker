@@ -1,0 +1,380 @@
+[
+  {
+    "config": {
+      "api": "openai",
+      "format": "wav",
+      "text": "short",
+      "runs": 5
+    },
+    "runs": 5,
+    "first_byte_latency": {
+      "mean": 0.0915501594543457,
+      "min": 0.08058881759643555,
+      "max": 0.129960298538208,
+      "stdev": 0.02149497777481151
+    },
+    "total_time": {
+      "mean": 2.791885185241699,
+      "min": 2.119943618774414,
+      "max": 3.190871477127075,
+      "stdev": 0.4608154468599901
+    },
+    "results": [
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.129960298538208,
+        "total_time": 3.152117967605591,
+        "total_bytes": 622864
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08335661888122559,
+        "total_time": 2.119943618774414,
+        "total_bytes": 424680
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08058881759643555,
+        "total_time": 2.9775187969207764,
+        "total_bytes": 608708
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08217740058898926,
+        "total_time": 3.190871477127075,
+        "total_bytes": 637020
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08166766166687012,
+        "total_time": 2.5189740657806396,
+        "total_bytes": 509616
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "native",
+      "format": "wav",
+      "text": "short",
+      "runs": 5
+    },
+    "runs": 5,
+    "first_byte_latency": {
+      "mean": 0.08267788887023926,
+      "min": 0.08148813247680664,
+      "max": 0.08494091033935547,
+      "stdev": 0.0013733964621274236
+    },
+    "total_time": {
+      "mean": 2.810076951980591,
+      "min": 2.3115851879119873,
+      "max": 3.317044496536255,
+      "stdev": 0.45740163849420784
+    },
+    "results": [
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.0828251838684082,
+        "total_time": 2.3115851879119873,
+        "total_bytes": 467148
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08172011375427246,
+        "total_time": 3.0948798656463623,
+        "total_bytes": 622864
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08148813247680664,
+        "total_time": 2.3415400981903076,
+        "total_bytes": 467148
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08494091033935547,
+        "total_time": 3.317044496536255,
+        "total_bytes": 651176
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 13,
+        "first_byte_latency": 0.08241510391235352,
+        "total_time": 2.985335111618042,
+        "total_bytes": 594552
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "openai",
+      "format": "wav",
+      "text": "medium",
+      "runs": 5
+    },
+    "runs": 5,
+    "first_byte_latency": {
+      "mean": 0.08692936897277832,
+      "min": 0.08144998550415039,
+      "max": 0.10030841827392578,
+      "stdev": 0.007581438920405917
+    },
+    "total_time": {
+      "mean": 7.8664689540863035,
+      "min": 7.039050817489624,
+      "max": 8.870514631271362,
+      "stdev": 0.6934535083935117
+    },
+    "results": [
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.10030841827392578,
+        "total_time": 8.118818283081055,
+        "total_bytes": 1613784
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.08418631553649902,
+        "total_time": 8.870514631271362,
+        "total_bytes": 1769500
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.08453893661499023,
+        "total_time": 7.039050817489624,
+        "total_bytes": 1415600
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.08144998550415039,
+        "total_time": 7.84574818611145,
+        "total_bytes": 1557160
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.08416318893432617,
+        "total_time": 7.458212852478027,
+        "total_bytes": 1458068
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "native",
+      "format": "wav",
+      "text": "medium",
+      "runs": 5
+    },
+    "runs": 5,
+    "first_byte_latency": {
+      "mean": 0.08843865394592285,
+      "min": 0.0830991268157959,
+      "max": 0.0967569351196289,
+      "stdev": 0.006373942423343026
+    },
+    "total_time": {
+      "mean": 7.493040895462036,
+      "min": 6.347235679626465,
+      "max": 8.277156114578247,
+      "stdev": 0.7061061537982155
+    },
+    "results": [
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.09371614456176758,
+        "total_time": 7.513062000274658,
+        "total_bytes": 1458068
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.08311271667480469,
+        "total_time": 6.347235679626465,
+        "total_bytes": 1274040
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.0830991268157959,
+        "total_time": 7.726595640182495,
+        "total_bytes": 1500536
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.0967569351196289,
+        "total_time": 7.601155042648315,
+        "total_bytes": 1486380
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 63,
+        "first_byte_latency": 0.08550834655761719,
+        "total_time": 8.277156114578247,
+        "total_bytes": 1613784
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "openai",
+      "format": "wav",
+      "text": "long",
+      "runs": 5
+    },
+    "runs": 5,
+    "first_byte_latency": {
+      "mean": 0.08413424491882324,
+      "min": 0.08192157745361328,
+      "max": 0.0874176025390625,
+      "stdev": 0.002034853202486857
+    },
+    "total_time": {
+      "mean": 16.49115824699402,
+      "min": 14.383296728134155,
+      "max": 19.485239267349243,
+      "stdev": 2.024667191385205
+    },
+    "results": [
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.0874176025390625,
+        "total_time": 14.383296728134155,
+        "total_bytes": 2859512
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08192157745361328,
+        "total_time": 14.989530324935913,
+        "total_bytes": 3001072
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08402371406555176,
+        "total_time": 17.321001052856445,
+        "total_bytes": 3468220
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08410859107971191,
+        "total_time": 16.276723861694336,
+        "total_bytes": 3255880
+      },
+      {
+        "api_type": "openai",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08319973945617676,
+        "total_time": 19.485239267349243,
+        "total_bytes": 3907056
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "native",
+      "format": "wav",
+      "text": "long",
+      "runs": 5
+    },
+    "runs": 5,
+    "first_byte_latency": {
+      "mean": 0.08450136184692383,
+      "min": 0.08372759819030762,
+      "max": 0.08549690246582031,
+      "stdev": 0.0007172938277465138
+    },
+    "total_time": {
+      "mean": 16.8993381023407,
+      "min": 14.860894441604614,
+      "max": 21.65330171585083,
+      "stdev": 2.782368915582906
+    },
+    "results": [
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08372759819030762,
+        "total_time": 16.430888414382935,
+        "total_bytes": 3270036
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08438825607299805,
+        "total_time": 16.63218402862549,
+        "total_bytes": 3255880
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08549690246582031,
+        "total_time": 14.919421911239624,
+        "total_bytes": 2958604
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08492112159729004,
+        "total_time": 14.860894441604614,
+        "total_bytes": 2958604
+      },
+      {
+        "api_type": "native",
+        "format": "wav",
+        "text_length": 152,
+        "first_byte_latency": 0.08397293090820312,
+        "total_time": 21.65330171585083,
+        "total_bytes": 4317580
+      }
+    ]
+  }
+]
