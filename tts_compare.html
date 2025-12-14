@@ -231,7 +231,7 @@
                     const source = audioContext.createBufferSource();
                     source.buffer = audioBuffer;
                     source.connect(audioContext.destination);
-                    activeSources.push(source); // 跟踪音频源
+                    activeSources.push(source);
                     source.onended = () => {
                         const idx = activeSources.indexOf(source);
                         if (idx > -1) activeSources.splice(idx, 1);
@@ -243,9 +243,13 @@
                         setMetric('voxcpmPlayStart', playLatency + 's', true);
                     }
                     
-                    // 确保播放时间不会落后于当前时间
-                    if (nextPlayTime < audioContext.currentTime) {
-                        nextPlayTime = audioContext.currentTime;
+                    // 如果播放时间落后，跳过这个 buffer（丢弃过时数据）
+                    // 而不是同时播放多个 buffer
+                    const currentTime = audioContext.currentTime;
+                    if (nextPlayTime < currentTime - 0.1) {
+                        // 落后太多，重置播放时间
+                        console.warn('Audio buffer underrun, resetting playback time');
+                        nextPlayTime = currentTime + 0.05;
                     }
                     
                     source.start(nextPlayTime);
