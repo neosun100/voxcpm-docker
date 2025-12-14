@@ -1,354 +1,268 @@
-# 🎙️ VoxCPM Docker Deployment
+# 🎙️ VoxCPM Docker - 高质量中文语音合成
 
 [English](README_EN.md) | [简体中文](README_CN.md) | [繁體中文](README_TW.md) | [日本語](README_JP.md)
 
 [![Docker Hub](https://img.shields.io/docker/v/neosun/voxcpm-allinone?label=Docker%20Hub)](https://hub.docker.com/r/neosun/voxcpm-allinone)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-[![GitHub Stars](https://img.shields.io/github/stars/OpenBMB/VoxCPM?style=social)](https://github.com/OpenBMB/VoxCPM)
+[![GitHub Stars](https://img.shields.io/github/stars/neosun100/voxcpm-docker?style=social)](https://github.com/neosun100/voxcpm-docker)
 
-> **Production-ready Docker deployment for VoxCPM TTS service with GPU support, REST API, Web UI, MCP protocol, and OpenAI-compatible API.**
+> **生产级 VoxCPM TTS 服务，支持 GPU 加速、OpenAI 兼容 API、自定义音色、流式输出**
 
-## 🆕 NEW: OpenAI-Compatible TTS API (⚡ Optimized!)
+## ✨ 核心特性
 
-VoxCPM now provides a **100% OpenAI-compatible TTS API** with **Native API performance**! Drop-in replacement for OpenAI's `/v1/audio/speech` endpoint.
+- 🚀 **OpenAI 兼容 API** - 直接替换 OpenAI TTS，无需改代码
+- 🎨 **自定义音色** - 上传音频创建专属音色，支持声音克隆
+- ⚡ **流式输出** - PCM 流式播放，首字节延迟 < 0.1s
+- 🎯 **高质量合成** - 44.1kHz 16-bit，支持中英文
+- 🐳 **一键部署** - Docker 镜像包含所有依赖
+- 🔌 **多格式支持** - WAV, MP3, PCM, OPUS, AAC, FLAC
+
+## 🎯 30 秒快速体验
 
 ```bash
-# Just change the base URL - that's it!
-curl http://localhost:7861/v1/audio/speech \
+# 直接播放语音（无需安装）
+curl -s https://voxcpm-tts.aws.xin/v1/audio/speech \
   -H "Content-Type: application/json" \
-  -d '{"model": "tts-1", "input": "Hello!", "voice": "alloy", "response_format": "wav"}' \
-  --output speech.wav
+  -d '{"model": "tts-1", "input": "你好，欢迎使用语音合成", "voice": "alloy", "response_format": "wav"}' \
+  | ffplay -autoexit -nodisp -
+
+# 保存为文件
+curl -s https://voxcpm-tts.aws.xin/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "你好世界", "voice": "alloy", "response_format": "wav"}' \
+  -o hello.wav
 ```
 
-**Features:**
-- ✅ 11 voices (alloy, echo, fable, onyx, nova, shimmer, ash, ballad, coral, sage, verse)
-- ✅ 3 models (tts-1, tts-1-hd, gpt-4o-mini-tts)
-- ✅ 6 formats (mp3, wav, opus, aac, flac, pcm)
-- ✅ Streaming audio generation
-- ✅ Chinese & English support
-- ⚡ **64% faster first-byte latency** (0.25s → 0.09s)
-- ⚡ **Native API performance** (< 5% difference)
+**在线测试页面**: https://mytts.aws.xin
 
-**Performance (Optimized):**
-- First-byte latency: **0.09s** (use `response_format="wav"`)
-- Total time: **7.87s** for medium text (43% faster than MP3)
-- Identical to Native API performance
+## 🐳 Docker 部署
 
-📚 **[OpenAI API Documentation](OPENAI_API.md)** | **[Quick Start Guide](OPENAI_QUICKSTART.md)** | **[Optimization Report](OPTIMIZATION_REPORT.md)**
-
-## 📸 UI Preview
-
-![VoxCPM Web UI](docs/images/ui-screenshot.png)
-
-## ✨ Features
-
-- 🚀 **One-Click Deployment** - Single Docker image with all dependencies
-- 🎨 **Gradio Web UI** - User-friendly interface for voice synthesis and cloning
-- 🔌 **REST API** - Complete API with 12 VoxCPM parameters
-- 🤖 **MCP Protocol** - Model Context Protocol integration for AI assistants
-- 🎯 **GPU Auto-Management** - Automatic model loading/offloading with idle timeout
-- 💾 **Persistent Storage** - Audio files saved to host directories
-- 🔒 **HTTPS Support** - Nginx reverse proxy with SSL/TLS
-- 📊 **Health Monitoring** - Built-in health checks and status endpoints
-- 🌐 **Public Access** - Domain: https://voxcpm-tts.aws.xin
-
-## 🎯 Quick Start
-
-### Method 1: Docker Run (Recommended)
+### 方式一：Docker Run
 
 ```bash
-# Pull the image
-docker pull neosun/voxcpm-allinone:1.2.0-openai-optimized
+docker pull neosun/voxcpm-allinone:latest
 
-# Run the container
 docker run -d \
   --name voxcpm \
   --gpus all \
   -p 7861:7861 \
-  -v /path/to/uploads:/app/uploads \
-  -v /path/to/outputs:/app/outputs \
+  -v ./voices:/app/voices \
+  -v ./outputs:/app/outputs \
   --restart unless-stopped \
-  neosun/voxcpm-allinone:1.2.0-openai-optimized
+  neosun/voxcpm-allinone:latest
 ```
 
-### Method 2: Docker Compose
+### 方式二：Docker Compose
 
 ```yaml
 version: '3.8'
-
 services:
   voxcpm:
-    image: neosun/voxcpm-allinone:1.2.0-openai-optimized
-    container_name: voxcpm-service
+    image: neosun/voxcpm-allinone:latest
+    container_name: voxcpm
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
-      - PORT=7861
-      - GPU_IDLE_TIMEOUT=60
     ports:
       - "7861:7861"
     volumes:
-      - ./uploads:/app/uploads
+      - ./voices:/app/voices
       - ./outputs:/app/outputs
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:7861/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
 ```
 
-Start the service:
 ```bash
 docker-compose up -d
 ```
 
-## 🌐 Access Points
+## 📡 API 使用
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| Web UI | http://localhost:7861 | Gradio interface |
-| API Docs | http://localhost:7861/docs | Swagger UI |
-| Health Check | http://localhost:7861/health | Service status |
-| GPU Status | http://localhost:7861/api/gpu/status | GPU info |
-| Public URL | https://voxcpm-tts.aws.xin | HTTPS access |
-
-## 📦 Installation
-
-### Prerequisites
-
-- Docker 20.10+
-- Docker Compose 1.29+ (optional)
-- NVIDIA GPU with CUDA 12.1 support
-- NVIDIA Docker Runtime
-
-### Install NVIDIA Docker Runtime
+### 语音合成
 
 ```bash
-# Ubuntu/Debian
-distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
-curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
-curl -s -L https://nvidia.github.io/nvidia-docker/$distribution/nvidia-docker.list | \
-  sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+# WAV 格式
+curl -s http://localhost:7861/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "让子弹飞一会儿", "voice": "alloy", "response_format": "wav"}' \
+  -o speech.wav
 
-sudo apt-get update
-sudo apt-get install -y nvidia-docker2
-sudo systemctl restart docker
+# MP3 格式
+curl -s http://localhost:7861/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "让子弹飞一会儿", "voice": "alloy", "response_format": "mp3"}' \
+  -o speech.mp3
+
+# PCM 流式（最低延迟）
+curl -s http://localhost:7861/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "让子弹飞一会儿", "voice": "alloy", "response_format": "pcm"}' \
+  | ffplay -f s16le -ar 44100 -ac 1 -autoexit -nodisp -
 ```
 
-### Verify GPU Access
+### 请求参数
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `model` | string | 否 | `tts-1`(快速), `tts-1-hd`(高质量), `gpt-4o-mini-tts` |
+| `input` | string | 是 | 要合成的文本（最大4096字符） |
+| `voice` | string | 否 | 预设音色或自定义 voice_id |
+| `response_format` | string | 否 | `wav`, `mp3`, `pcm`, `opus`, `aac`, `flac` |
+| `speed` | float | 否 | 语速 0.25-4.0，默认 1.0 |
+
+### 预设音色
+
+`alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`, `ash`, `ballad`, `coral`, `sage`, `verse`
+
+## 🎨 自定义音色
+
+### 1. 上传音频创建音色
 
 ```bash
-docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
+curl -X POST http://localhost:7861/v1/voices/create \
+  -F "audio=@your_voice.wav" \
+  -F "name=我的音色" \
+  -F "text=音频对应的文本内容"
 ```
 
-## ⚙️ Configuration
+**响应：**
+```json
+{
+  "success": true,
+  "voice_id": "20cfdc63ddf8",
+  "name": "我的音色",
+  "message": "音色创建成功，使用 voice='20cfdc63ddf8' 调用 /v1/audio/speech"
+}
+```
 
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 7861 | Service port |
-| `GPU_IDLE_TIMEOUT` | 60 | GPU auto-offload timeout (seconds) |
-| `NVIDIA_VISIBLE_DEVICES` | all | GPU device selection |
-| `HF_REPO_ID` | openbmb/VoxCPM1.5 | Model repository |
-
-### Volume Mounts
-
-| Host Path | Container Path | Purpose |
-|-----------|----------------|---------|
-| `./uploads` | `/app/uploads` | Reference audio files |
-| `./outputs` | `/app/outputs` | Generated audio files |
-
-## 🎨 Usage Examples
-
-### Web UI
-
-1. Open http://localhost:7861 in your browser
-2. Navigate to "Voice Synthesis" or "Voice Cloning" tab
-3. Enter text and adjust parameters
-4. Click "Generate" to create audio
-
-### REST API
-
-#### Text-to-Speech
+### 2. 使用自定义音色
 
 ```bash
-curl -X POST http://localhost:7861/api/tts \
-  -F "text=Hello, this is VoxCPM speaking." \
-  -F "cfg_value=2.0" \
-  -F "inference_timesteps=10" \
+curl -s http://localhost:7861/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "让子弹飞一会儿", "voice": "20cfdc63ddf8", "response_format": "wav"}' \
   -o output.wav
 ```
 
-#### Voice Cloning
+### 3. 管理音色
 
 ```bash
-curl -X POST http://localhost:7861/api/tts \
-  -F "text=Hello, this is a cloned voice." \
-  -F "prompt_audio=@reference.wav" \
-  -F "prompt_text=Reference transcript" \
-  -F "cfg_value=2.0" \
-  -o cloned.wav
+# 列出所有自定义音色
+curl -s http://localhost:7861/v1/voices/custom | jq .
+
+# 获取音色详情
+curl -s http://localhost:7861/v1/voices/20cfdc63ddf8 | jq .
+
+# 删除音色
+curl -X DELETE http://localhost:7861/v1/voices/20cfdc63ddf8
 ```
 
-#### GPU Status
+## 🌊 流式播放
+
+### 命令行
 
 ```bash
-curl http://localhost:7861/api/gpu/status
+# WAV 流式播放
+curl -s http://localhost:7861/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "你好世界", "voice": "alloy", "response_format": "wav"}' \
+  | ffplay -autoexit -nodisp -
+
+# 使用 aplay（Linux）
+curl -s http://localhost:7861/v1/audio/speech \
+  -H "Content-Type: application/json" \
+  -d '{"model": "tts-1", "input": "你好", "voice": "alloy", "response_format": "wav"}' \
+  | aplay
 ```
 
-#### GPU Offload
+### Web 前端
 
-```bash
-curl -X POST http://localhost:7861/api/gpu/offload
-```
+访问流式测试页面：**https://mytts.aws.xin**
 
-### MCP Integration
+使用 Web Audio API 实现 PCM 流式播放，边生成边播放，无需等待完整音频。
 
-See [MCP_GUIDE.md](MCP_GUIDE.md) for detailed integration instructions.
+## 📊 API 端点一览
 
-## 📊 API Parameters
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/v1/audio/speech` | POST | 语音合成（支持流式） |
+| `/v1/voices/create` | POST | 上传音频创建自定义音色 |
+| `/v1/voices/custom` | GET | 列出所有自定义音色 |
+| `/v1/voices/{voice_id}` | GET | 获取音色详情 |
+| `/v1/voices/{voice_id}` | DELETE | 删除自定义音色 |
+| `/v1/models` | GET | 列出可用模型 |
+| `/v1/voices` | GET | 列出预设音色 |
+| `/health` | GET | 健康检查 |
+| `/docs` | GET | Swagger API 文档 |
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `text` | string | required | Input text |
-| `prompt_audio` | file | null | Reference audio for cloning |
-| `prompt_text` | string | null | Reference transcript |
-| `cfg_value` | float | 2.0 | Guidance strength (1.0-5.0) |
-| `inference_timesteps` | int | 10 | Inference steps (5-50) |
-| `min_len` | int | 2 | Minimum length |
-| `max_len` | int | 4096 | Maximum length |
-| `normalize` | bool | false | Text normalization |
-| `denoise` | bool | false | Audio denoising |
-| `retry_badcase` | bool | true | Retry on bad cases |
-| `retry_badcase_max_times` | int | 3 | Max retry attempts |
-| `retry_badcase_ratio_threshold` | float | 6.0 | Retry threshold |
+## ⚡ 性能指标
 
-See [PARAMETERS.md](PARAMETERS.md) for detailed parameter descriptions.
+| 指标 | 数值 |
+|------|------|
+| PCM 首字节延迟 | ~0.001s |
+| WAV 首字节延迟 | ~0.09s |
+| 生成速度 | 2-8s（取决于文本长度） |
+| 音频质量 | 44.1kHz, 16-bit PCM |
+| GPU 显存占用 | ~2.1GB |
 
-## 🏗️ Project Structure
+## 🔗 在线服务
 
-```
-VoxCPM/
-├── Dockerfile.allinone      # All-in-one Docker image
-├── docker-compose.yml        # Docker Compose configuration
-├── server.py                 # FastAPI + Gradio server
-├── gpu_manager.py            # GPU memory management
-├── mcp_server.py             # MCP protocol server
-├── .env.example              # Environment template
-├── docs/                     # Documentation
-├── examples/                 # Usage examples
-└── src/                      # VoxCPM source code
-```
+| 服务 | 地址 |
+|------|------|
+| API 服务 | https://voxcpm-tts.aws.xin |
+| API 文档 | https://voxcpm-tts.aws.xin/docs |
+| 流式测试 | https://mytts.aws.xin |
+| EdgeTTS 测试 | https://edge-tts.aws.xin |
 
-## 🛠️ Tech Stack
+## 📝 版本历史
 
-- **Base Image**: nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
-- **Python**: 3.10
-- **PyTorch**: 2.5.1+cu121
-- **VoxCPM**: 1.5
-- **FastAPI**: Latest
-- **Gradio**: Latest
-- **Nginx**: Reverse proxy with SSL/TLS
+### v1.4.0 (2025-12-14) - 自定义音色
+- ✅ **自定义音色 API** - 上传音频创建专属音色
+- ✅ 音色管理（创建/列表/详情/删除）
+- ✅ 支持 voice_id 调用自定义音色
+- ✅ 完整 API 文档
 
-## 📈 Performance
+### v1.3.1 (2025-12-14) - 音频质量优化
+- ⚡ 消除开头杂音（DC offset 去除 + 淡入效果）
+- ⚡ 优化流式播放（500ms 缓冲 + 时间同步）
+- ⚡ 防止音频重叠播放
 
-| Metric | Value |
-|--------|-------|
-| Image Size | 17.2GB |
-| Container Startup | ~15 seconds |
-| First Generation | ~110 seconds (with model loading) |
-| Subsequent Generation | ~24 seconds |
-| GPU Memory | 2.14GB (model loaded) |
-| Audio Quality | 44.1kHz, 16-bit PCM |
+### v1.3.0 (2025-12-14) - 流式播放
+- 🌊 PCM 真流式输出（首字节 0.001s）
+- 🌊 Web Audio API 前端播放
+- 🌊 字节对齐修复
 
-## 🔧 Troubleshooting
+### v1.2.0 (2025-12-14) - 性能优化
+- ⚡ 64% 延迟降低（0.25s → 0.09s）
+- ⚡ 43% 总时间优化
+- ⚡ WAV 头修复
 
-### Container won't start
+### v1.1.0 (2025-12-13) - OpenAI 兼容
+- ✅ OpenAI 兼容 `/v1/audio/speech` 端点
+- ✅ 11 个预设音色
+- ✅ 6 种音频格式
+- ✅ 流式音频生成
 
-```bash
-# Check logs
-docker logs voxcpm
-
-# Verify GPU access
-docker run --rm --gpus all nvidia/cuda:12.1.0-base-ubuntu22.04 nvidia-smi
-```
-
-### Model loading fails
-
-```bash
-# Check disk space
-df -h
-
-# Manually download model
-docker exec -it voxcpm python3 -c "from huggingface_hub import snapshot_download; snapshot_download('openbmb/VoxCPM1.5')"
-```
-
-### Port already in use
-
-```bash
-# Change port mapping
-docker run -d --name voxcpm --gpus all -p 8080:7861 neosun/voxcpm-allinone:1.0.8
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📝 Changelog
-
-### v1.2.0 (2025-12-14) - OpenAI API Optimization
-- ⚡ **64% latency reduction**: First-byte 0.25s → 0.09s
-- ⚡ **43% faster total time**: 13.90s → 7.87s (medium text)
-- ⚡ **Native API parity**: < 5% performance difference
-- 🎯 Direct WAV output (no MP3 conversion overhead)
-- 🎯 Eliminated ffmpeg process startup overhead
-- 📊 Comprehensive benchmark suite
-- 📚 Performance optimization documentation
-
-### v1.1.0 (2025-12-13) - OpenAI API Compatibility
-- ✅ 100% OpenAI-compatible `/v1/audio/speech` endpoint
-- ✅ 11 OpenAI voices support
-- ✅ 3 models (tts-1, tts-1-hd, gpt-4o-mini-tts)
-- ✅ 6 audio formats (mp3, wav, opus, aac, flac, pcm)
-- ✅ Streaming audio generation
-- 📚 Complete OpenAI API documentation
-
-### v1.0.0 (2025-12-12)
-- ✅ Initial release
-- ✅ All-in-one Docker image
-- ✅ FastAPI REST API with 12 parameters
+### v1.0.0 (2025-12-12) - 初始版本
+- ✅ All-in-one Docker 镜像
+- ✅ FastAPI REST API
 - ✅ Gradio Web UI
-- ✅ MCP protocol integration
-- ✅ GPU auto-management
-- ✅ HTTPS support with Nginx
-- ✅ 14/14 tests passed
+- ✅ GPU 自动管理
 
-## 📄 License
+## 🛠️ 系统要求
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+- Docker 20.10+
+- NVIDIA GPU（CUDA 12.1+）
+- NVIDIA Docker Runtime
+- 4GB+ GPU 显存
 
-## 🙏 Acknowledgments
+## 📄 许可证
 
-- [VoxCPM](https://github.com/OpenBMB/VoxCPM) - Original TTS model
-- [OpenBMB](https://github.com/OpenBMB) - Model development
-- [ModelBest](https://modelbest.cn/) - Project sponsor
+Apache License 2.0
 
-## ⭐ Star History
+## 🙏 致谢
 
-[![Star History Chart](https://api.star-history.com/svg?repos=OpenBMB/VoxCPM&type=Date)](https://star-history.com/#OpenBMB/VoxCPM)
-
-## 📱 Follow Us
-
-![WeChat](https://img.aws.xin/uPic/扫码_搜索联合传播样式-标准色版.png)
+- [VoxCPM](https://github.com/OpenBMB/VoxCPM) - 原始 TTS 模型
+- [OpenBMB](https://github.com/OpenBMB) - 模型开发
 
 ---
 
