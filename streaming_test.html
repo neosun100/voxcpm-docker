@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxCPM 流式语音测试</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 { color: #667eea; margin-bottom: 8px; text-align: center; font-size: 24px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+        label { display: block; margin-bottom: 8px; color: #475569; font-weight: 600; }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            min-height: 100px;
+            resize: vertical;
+            margin-bottom: 20px;
+        }
+        textarea:focus { outline: none; border-color: #667eea; }
+        .play-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .play-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,0.4); }
+        .play-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metric {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .metric-label { font-size: 12px; color: #64748b; margin-bottom: 5px; }
+        .metric-value { font-size: 20px; font-weight: 700; color: #334155; }
+        .metric-value.fast { color: #10b981; }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .status.idle { background: #f1f5f9; color: #64748b; }
+        .status.loading { background: #fef3c7; color: #92400e; }
+        .status.playing { background: #d1fae5; color: #065f46; }
+        .status.success { background: #d1fae5; color: #065f46; }
+        .status.error { background: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎙️ VoxCPM 流式语音</h1>
+        <p class="subtitle">PCM 流式输出 · 边生成边播放</p>
+        
+        <label>📝 输入文本</label>
+        <textarea id="textInput">你好，这是流式语音合成测试。音频会边生成边播放，无需等待全部完成。</textarea>
+        
+        <button class="play-btn" id="playBtn" onclick="play()">▶️ 播放</button>
+        
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-label">首字节延迟</div>
+                <div class="metric-value" id="firstByte">-</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">开始播放</div>
+                <div class="metric-value" id="playStart">-</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">总时间</div>
+                <div class="metric-value" id="totalTime">-</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">数据大小</div>
+                <div class="metric-value" id="dataSize">-</div>
+            </div>
+        </div>
+        
+        <div class="status idle" id="status">点击播放按钮开始测试</div>
+    </div>
+
+    <script>
+        let audioContext = null;
+        let activeSources = [];
+        const SAMPLE_RATE = 44100;
+        const FADE_SAMPLES = 2048;
+        const MIN_BUFFER = 22050; // 500ms
+        
+        function stopAll() {
+            activeSources.forEach(s => { try { s.stop(); } catch(e) {} });
+            activeSources = [];
+        }
+        
+        function fadeIn(arr) {
+            const len = Math.min(FADE_SAMPLES, arr.length);
+            for (let i = 0; i < len; i++) arr[i] *= i / len;
+        }
+        
+        async function play() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) return alert('请输入文本');
+            
+            const btn = document.getElementById('playBtn');
+            const status = document.getElementById('status');
+            btn.disabled = true;
+            
+            status.className = 'status loading';
+            status.textContent = '⚡ 连接中...';
+            document.getElementById('firstByte').textContent = '...';
+            document.getElementById('playStart').textContent = '...';
+            document.getElementById('totalTime').textContent = '...';
+            document.getElementById('dataSize').textContent = '...';
+            
+            if (!audioContext) audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
+            if (audioContext.state === 'suspended') await audioContext.resume();
+            stopAll();
+            
+            const startTime = performance.now();
+            let firstByteTime = null, playStartTime = null;
+            let receivedBytes = 0, isFirst = true;
+            let nextPlayTime = audioContext.currentTime + 0.15;
+            let pending = new Uint8Array(0);
+            let samples = [];
+            
+            function playBuffer() {
+                if (samples.length === 0) return;
+                const arr = new Float32Array(samples);
+                if (isFirst) { fadeIn(arr); isFirst = false; }
+                
+                const buf = audioContext.createBuffer(1, arr.length, SAMPLE_RATE);
+                buf.getChannelData(0).set(arr);
+                const src = audioContext.createBufferSource();
+                src.buffer = buf;
+                src.connect(audioContext.destination);
+                activeSources.push(src);
+                src.onended = () => { const i = activeSources.indexOf(src); if (i > -1) activeSources.splice(i, 1); };
+                
+                if (!playStartTime) {
+                    playStartTime = performance.now();
+                    document.getElementById('playStart').textContent = ((playStartTime - startTime) / 1000).toFixed(3) + 's';
+                    document.getElementById('playStart').classList.add('fast');
+                }
+                
+                if (nextPlayTime < audioContext.currentTime - 0.1) nextPlayTime = audioContext.currentTime + 0.05;
+                src.start(nextPlayTime);
+                nextPlayTime += buf.duration;
+                samples = [];
+            }
+            
+            try {
+                const res = await fetch('https://voxcpm-tts.aws.xin/v1/audio/speech', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ model: 'tts-1', input: text, voice: 'alloy', response_format: 'pcm' })
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                
+                const reader = res.body.getReader();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) { playBuffer(); break; }
+                    
+                    if (!firstByteTime) {
+                        firstByteTime = performance.now();
+                        document.getElementById('firstByte').textContent = ((firstByteTime - startTime) / 1000).toFixed(3) + 's';
+                        document.getElementById('firstByte').classList.add('fast');
+                        status.className = 'status playing';
+                        status.textContent = '🔊 边接收边播放...';
+                    }
+                    
+                    receivedBytes += value.length;
+                    document.getElementById('dataSize').textContent = (receivedBytes / 1024).toFixed(0) + ' KB';
+                    
+                    const combined = new Uint8Array(pending.length + value.length);
+                    combined.set(pending);
+                    combined.set(value, pending.length);
+                    const validLen = Math.floor(combined.length / 2) * 2;
+                    pending = combined.slice(validLen);
+                    
+                    const int16 = new Int16Array(combined.slice(0, validLen).buffer);
+                    for (let i = 0; i < int16.length; i++) samples.push(int16[i] / 32768);
+                    
+                    if (samples.length >= MIN_BUFFER) playBuffer();
+                }
+                
+                const total = ((performance.now() - startTime) / 1000).toFixed(2);
+                document.getElementById('totalTime').textContent = total + 's';
+                status.className = 'status success';
+                status.textContent = `✅ 完成！首字节 ${((firstByteTime - startTime) / 1000).toFixed(3)}s`;
+                
+            } catch (e) {
+                status.className = 'status error';
+                status.textContent = '❌ ' + e.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
