@@ -121,51 +121,63 @@ async def create_speech(request: SpeechRequest):
         else:  # gpt-4o-mini-tts
             inference_timesteps = 7  # Balanced
         
-        # Generate audio - collect all chunks then output complete file
+        # Generate audio
         sample_rate = model.tts_model.sample_rate
         
         def audio_stream():
             import numpy as np
-            all_chunks = []
             
-            # Collect all audio chunks
-            for wav_chunk in model.generate_streaming(
-                text=request.input,
-                prompt_wav_path=preset["path"],
-                prompt_text=preset["text"],
-                cfg_value=2.0,
-                inference_timesteps=inference_timesteps,
-                min_len=2,
-                max_len=4096,
-                normalize=False,
-                denoise=False,
-                retry_badcase=False,
-            ):
-                all_chunks.append(wav_chunk)
-            
-            # Concatenate all chunks
-            full_audio = np.concatenate(all_chunks)
-            
-            # Output complete WAV file
-            if request.response_format == "wav":
-                buffer = io.BytesIO()
-                sf.write(buffer, full_audio, sample_rate, format='WAV', subtype='PCM_16')
-                buffer.seek(0)
-                yield buffer.read()
-            elif request.response_format == "pcm":
-                yield full_audio.tobytes()
+            # PCM format: true streaming (chunk by chunk)
+            if request.response_format == "pcm":
+                for wav_chunk in model.generate_streaming(
+                    text=request.input,
+                    prompt_wav_path=preset["path"],
+                    prompt_text=preset["text"],
+                    cfg_value=2.0,
+                    inference_timesteps=inference_timesteps,
+                    min_len=2,
+                    max_len=4096,
+                    normalize=False,
+                    denoise=False,
+                    retry_badcase=False,
+                ):
+                    # Convert float32 to int16 PCM
+                    pcm_data = (wav_chunk * 32767).astype(np.int16)
+                    yield pcm_data.tobytes()
             else:
-                # For other formats, convert complete file
-                buffer = io.BytesIO()
-                sf.write(buffer, full_audio, sample_rate, format='WAV', subtype='PCM_16')
-                buffer.seek(0)
-                wav_data = buffer.read()
-                try:
-                    converted = convert_audio_format(wav_data, sample_rate, request.response_format)
-                    yield converted
-                except Exception as e:
-                    print(f"⚠️ Format conversion failed: {e}, falling back to WAV")
-                    yield wav_data
+                # WAV/MP3: must collect all chunks for correct header
+                all_chunks = []
+                for wav_chunk in model.generate_streaming(
+                    text=request.input,
+                    prompt_wav_path=preset["path"],
+                    prompt_text=preset["text"],
+                    cfg_value=2.0,
+                    inference_timesteps=inference_timesteps,
+                    min_len=2,
+                    max_len=4096,
+                    normalize=False,
+                    denoise=False,
+                    retry_badcase=False,
+                ):
+                    all_chunks.append(wav_chunk)
+                
+                full_audio = np.concatenate(all_chunks)
+                
+                if request.response_format == "wav":
+                    buffer = io.BytesIO()
+                    sf.write(buffer, full_audio, sample_rate, format='WAV', subtype='PCM_16')
+                    buffer.seek(0)
+                    yield buffer.read()
+                else:
+                    buffer = io.BytesIO()
+                    sf.write(buffer, full_audio, sample_rate, format='WAV', subtype='PCM_16')
+                    buffer.seek(0)
+                    wav_data = buffer.read()
+                    try:
+                        converted = convert_audio_format(wav_data, sample_rate, request.response_format)
+                        yield converted
+                    except Exception as e:
+                        yield wav_data
         
         # Determine media type
         media_types = {
