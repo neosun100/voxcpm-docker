@@ -121,7 +121,8 @@
         let results = { voxcpm: null, edge: null };
         let audioContext = null;
         const SAMPLE_RATE = 44100;
-        const FADE_SAMPLES = 512; // 淡入采样数
+        const FADE_SAMPLES = 2048; // 淡入采样数（约 46ms）
+        const MIN_BUFFER_SIZE = 8820; // 最小缓冲 200ms 数据后再播放
         
         function setStatus(id, msg, type) {
             const el = document.getElementById(id);
@@ -180,8 +181,10 @@
             if (!audioContext) audioContext = new AudioContext({ sampleRate: SAMPLE_RATE });
             if (audioContext.state === 'suspended') await audioContext.resume();
             
-            let nextPlayTime = audioContext.currentTime + 0.05; // 50ms 缓冲
+            let nextPlayTime = audioContext.currentTime + 0.1; // 100ms 初始缓冲
             let pendingBytes = new Uint8Array(0);
+            let accumulatedSamples = []; // 累积采样用于初始缓冲
+            let playbackStarted = false;
             
             try {
                 const response = await fetch('https://voxcpm-tts.aws.xin/v1/audio/speech', {
@@ -199,9 +202,49 @@
                 
                 const reader = response.body.getReader();
                 
+                // 播放累积的采样
+                function playAccumulatedSamples() {
+                    if (accumulatedSamples.length === 0) return;
+                    
+                    const float32Array = new Float32Array(accumulatedSamples);
+                    
+                    // 去除 DC offset
+                    let sum = 0;
+                    for (let i = 0; i < float32Array.length; i++) sum += float32Array[i];
+                    const dcOffset = sum / float32Array.length;
+                    for (let i = 0; i < float32Array.length; i++) float32Array[i] -= dcOffset;
+                    
+                    // 应用淡入效果
+                    if (isFirstChunk) {
+                        applyFadeIn(float32Array);
+                        isFirstChunk = false;
+                    }
+                    
+                    const audioBuffer = audioContext.createBuffer(1, float32Array.length, SAMPLE_RATE);
+                    audioBuffer.getChannelData(0).set(float32Array);
+                    
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    source.connect(audioContext.destination);
+                    
+                    if (!playStartTime) {
+                        playStartTime = performance.now();
+                        const playLatency = ((playStartTime - startTime) / 1000).toFixed(3);
+                        setMetric('voxcpmPlayStart', playLatency + 's', true);
+                    }
+                    
+                    source.start(nextPlayTime);
+                    nextPlayTime += audioBuffer.duration;
+                    accumulatedSamples = [];
+                }
+                
                 while (true) {
                     const { done, value } = await reader.read();
-                    if (done) break;
+                    if (done) {
+                        // 播放剩余数据
+                        playAccumulatedSamples();
+                        break;
+                    }
                     
                     // 首字节
                     if (!firstByteTime) {
@@ -228,34 +271,14 @@
                     
                     // 转换 PCM 数据
                     const int16Array = new Int16Array(validData.buffer, validData.byteOffset, validData.length / 2);
-                    const float32Array = new Float32Array(int16Array.length);
                     for (let i = 0; i < int16Array.length; i++) {
-                        float32Array[i] = int16Array[i] / 32768;
+                        accumulatedSamples.push(int16Array[i] / 32768);
                     }
                     
-                    // 第一个块应用淡入效果消除开头杂音
-                    if (isFirstChunk) {
-                        applyFadeIn(float32Array);
-                        isFirstChunk = false;
+                    // 累积足够数据后开始播放
+                    if (accumulatedSamples.length >= MIN_BUFFER_SIZE) {
+                        playAccumulatedSamples();
                     }
-                    
-                    // 创建音频缓冲区并播放
-                    const audioBuffer = audioContext.createBuffer(1, float32Array.length, SAMPLE_RATE);
-                    audioBuffer.getChannelData(0).set(float32Array);
-                    
-                    const source = audioContext.createBufferSource();
-                    source.buffer = audioBuffer;
-                    source.connect(audioContext.destination);
-                    
-                    // 记录开始播放时间
-                    if (!playStartTime) {
-                        playStartTime = performance.now();
-                        const playLatency = ((playStartTime - startTime) / 1000).toFixed(3);
-                        setMetric('voxcpmPlayStart', playLatency + 's', true);
-                    }
-                    
-                    source.start(nextPlayTime);
-                    nextPlayTime += audioBuffer.duration;
                 }
                 
                 const totalTime = ((performance.now() - startTime) / 1000).toFixed(2);
