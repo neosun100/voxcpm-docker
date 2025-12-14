@@ -129,6 +129,10 @@ async def create_speech(request: SpeechRequest):
             
             # PCM format: true streaming (chunk by chunk)
             if request.response_format == "pcm":
+                is_first_chunk = True
+                dc_offset = 0.0  # 累积的 DC offset 估计
+                alpha = 0.001   # DC offset 更新系数（低通滤波）
+                
                 for wav_chunk in model.generate_streaming(
                     text=request.input,
                     prompt_wav_path=preset["path"],
@@ -141,6 +145,20 @@ async def create_speech(request: SpeechRequest):
                     denoise=False,
                     retry_badcase=False,
                 ):
+                    # 使用滑动平均更新 DC offset 估计
+                    chunk_mean = np.mean(wav_chunk)
+                    dc_offset = dc_offset * (1 - alpha) + chunk_mean * alpha
+                    
+                    # 去除 DC offset
+                    wav_chunk = wav_chunk - dc_offset
+                    
+                    # Apply fade-in to first chunk (longer fade for smoother start)
+                    if is_first_chunk:
+                        fade_len = min(2048, len(wav_chunk))  # ~46ms @ 44.1kHz
+                        fade = np.linspace(0, 1, fade_len)
+                        wav_chunk[:fade_len] *= fade
+                        is_first_chunk = False
+                    
                     # Convert float32 to int16 PCM
                     pcm_data = (wav_chunk * 32767).astype(np.int16)
                     yield pcm_data.tobytes()
