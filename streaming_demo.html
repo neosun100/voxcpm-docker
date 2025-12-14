@@ -55,7 +55,7 @@
             height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
             width: 0%; transition: width 0.1s;
             display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold;
+            color: white; font-weight: bold; font-size: 14px;
         }
         .status { padding: 15px; border-radius: 10px; margin-bottom: 20px; font-size: 14px; }
         .status.info { background: #e3f2fd; color: #1976d2; }
@@ -71,7 +71,7 @@
 <body>
     <div class="container">
         <h1>⚡ VoxCPM 流式 TTS 演示</h1>
-        <p class="subtitle">实时体验流式音频生成速度 | 边生成边播放</p>
+        <p class="subtitle">实时体验流式音频生成速度</p>
 
         <div class="input-group">
             <label>输入文本：</label>
@@ -112,11 +112,9 @@
     </div>
 
     <script>
-        let audioContext, sourceNode;
         let startTime, firstByteTime;
         let receivedBytes = 0;
         let chunkCount = 0;
-        let allPcmData = [];
 
         function showStatus(message, type = 'info') {
             const status = document.getElementById('status');
@@ -131,71 +129,12 @@
                 elem.classList.add('highlight');
                 setTimeout(() => elem.classList.remove('highlight'), 500);
             }
-            // 颜色标记
             if (id === 'firstByte') {
                 const val = parseFloat(value);
                 elem.classList.remove('fast', 'slow');
                 if (val < 0.3) elem.classList.add('fast');
                 else if (val > 1) elem.classList.add('slow');
             }
-        }
-
-        // 解析 WAV 头，提取 PCM 数据
-        function parseWavChunk(arrayBuffer) {
-            const view = new DataView(arrayBuffer);
-            // 检查是否是 WAV 文件 (RIFF header)
-            if (view.getUint32(0, false) === 0x52494646) { // "RIFF"
-                // 找到 data chunk
-                let offset = 12;
-                while (offset < arrayBuffer.byteLength - 8) {
-                    const chunkId = view.getUint32(offset, false);
-                    const chunkSize = view.getUint32(offset + 4, true);
-                    if (chunkId === 0x64617461) { // "data"
-                        return new Int16Array(arrayBuffer, offset + 8, chunkSize / 2);
-                    }
-                    offset += 8 + chunkSize;
-                }
-            }
-            // 如果不是 WAV，假设是原始 PCM
-            return new Int16Array(arrayBuffer);
-        }
-
-        // 创建完整的 WAV 文件
-        function createWavFile(pcmData, sampleRate = 44100) {
-            const numChannels = 1;
-            const bitsPerSample = 16;
-            const byteRate = sampleRate * numChannels * bitsPerSample / 8;
-            const blockAlign = numChannels * bitsPerSample / 8;
-            const dataSize = pcmData.length * 2;
-            const buffer = new ArrayBuffer(44 + dataSize);
-            const view = new DataView(buffer);
-
-            // WAV header
-            const writeString = (offset, string) => {
-                for (let i = 0; i < string.length; i++) {
-                    view.setUint8(offset + i, string.charCodeAt(i));
-                }
-            };
-
-            writeString(0, 'RIFF');
-            view.setUint32(4, 36 + dataSize, true);
-            writeString(8, 'WAVE');
-            writeString(12, 'fmt ');
-            view.setUint32(16, 16, true);
-            view.setUint16(20, 1, true);
-            view.setUint16(22, numChannels, true);
-            view.setUint32(24, sampleRate, true);
-            view.setUint32(28, byteRate, true);
-            view.setUint16(32, blockAlign, true);
-            view.setUint16(34, bitsPerSample, true);
-            writeString(36, 'data');
-            view.setUint32(40, dataSize, true);
-
-            // PCM data
-            const pcmView = new Int16Array(buffer, 44);
-            pcmView.set(pcmData);
-
-            return new Blob([buffer], { type: 'audio/wav' });
         }
 
         async function generateAudio() {
@@ -217,7 +156,6 @@
             receivedBytes = 0;
             chunkCount = 0;
             firstByteTime = null;
-            allPcmData = [];
             updateMetric('firstByte', '-');
             updateMetric('totalTime', '-');
             updateMetric('dataSize', '-');
@@ -225,6 +163,7 @@
             progressBar.textContent = '连接中...';
             chunkInfo.textContent = '';
             audioPlayer.src = '';
+            audioPlayer.pause();
 
             showStatus('🚀 正在连接服务器...', 'info');
 
@@ -256,6 +195,7 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const reader = response.body.getReader();
+                const chunks = [];
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -263,6 +203,7 @@
 
                     chunkCount++;
                     receivedBytes += value.length;
+                    chunks.push(value);
 
                     // 首字节
                     if (!firstByteTime) {
@@ -274,57 +215,40 @@
                         progressBar.textContent = '接收中...';
                     }
 
-                    // 解析 WAV chunk，提取 PCM
-                    try {
-                        const pcm = parseWavChunk(value.buffer);
-                        if (pcm.length > 0) {
-                            allPcmData.push(pcm);
-                        }
-                    } catch (e) {
-                        console.warn('Parse chunk error:', e);
-                    }
-
                     // 更新 UI
                     const elapsed = (performance.now() - startTime) / 1000;
-                    const progress = Math.min(90, 20 + chunkCount * 5);
+                    const progress = Math.min(95, 20 + chunkCount * 3);
                     progressBar.style.width = `${progress}%`;
-                    progressBar.textContent = `${chunkCount} 块`;
+                    progressBar.textContent = `${(receivedBytes / 1024).toFixed(0)} KB`;
                     
                     updateMetric('dataSize', `${(receivedBytes / 1024).toFixed(0)}KB`);
                     updateMetric('totalTime', `${elapsed.toFixed(2)}s`);
-                    chunkInfo.textContent = `已接收 ${chunkCount} 个数据块`;
                 }
 
-                // 完成 - 合并所有 PCM 数据
+                // 完成
                 const totalTime = ((performance.now() - startTime) / 1000).toFixed(2);
                 progressBar.style.width = '100%';
                 progressBar.textContent = '完成!';
                 updateMetric('totalTime', `${totalTime}s`, true);
 
-                // 合并 PCM
-                const totalLength = allPcmData.reduce((sum, arr) => sum + arr.length, 0);
-                const mergedPcm = new Int16Array(totalLength);
-                let offset = 0;
-                for (const pcm of allPcmData) {
-                    mergedPcm.set(pcm, offset);
-                    offset += pcm.length;
-                }
-
-                // 创建 WAV 并播放
-                const wavBlob = createWavFile(mergedPcm, 44100);
-                const audioUrl = URL.createObjectURL(wavBlob);
+                // 直接拼接所有数据块（后端返回的是完整 WAV 文件）
+                const blob = new Blob(chunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(blob);
                 audioPlayer.src = audioUrl;
                 
-                // 尝试自动播放
-                try {
-                    await audioPlayer.play();
-                } catch (e) {
-                    console.log('Auto-play blocked, user can click play');
-                }
+                // 等待音频加载完成
+                audioPlayer.onloadedmetadata = () => {
+                    const duration = audioPlayer.duration.toFixed(1);
+                    chunkInfo.textContent = `音频时长: ${duration}s | ${chunkCount} 个网络包 | 点击播放`;
+                };
 
-                const duration = (mergedPcm.length / 44100).toFixed(1);
-                showStatus(`✅ 生成完成！总时间: ${totalTime}s | 音频时长: ${duration}s | ${chunkCount} 个数据块`, 'success');
-                chunkInfo.textContent = `共 ${chunkCount} 个数据块 | 音频时长 ${duration}s | 点击播放器播放`;
+                // 自动播放
+                audioPlayer.play().catch(e => {
+                    console.log('自动播放被阻止，请点击播放按钮');
+                    chunkInfo.textContent = `${chunkCount} 个网络包 | 请点击播放按钮播放`;
+                });
+
+                showStatus(`✅ 生成完成！总时间: ${totalTime}s`, 'success');
 
             } catch (error) {
                 showStatus(`❌ 错误: ${error.message}`, 'error');
