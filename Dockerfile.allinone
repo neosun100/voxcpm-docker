@@ -27,6 +27,7 @@ COPY pyproject.toml ./
 COPY src ./src
 COPY server.py gpu_manager.py mcp_server.py cache_manager.py openai_api.py ./
 COPY README.md LICENSE ./
+COPY examples ./examples
 
 # Install all dependencies
 RUN pip3 install --upgrade pip && \

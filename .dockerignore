@@ -34,8 +34,9 @@ outputs/*
 uploads/*
 !uploads/.gitkeep
 
-# Audio files
+# Audio files (except example.wav)
 *.wav
+!examples/example.wav
 *.mp3
 *.flac
 *.ogg
@@ -50,7 +51,6 @@ uploads/*
 
 # Documentation (keep essential only)
 docs/
-examples/*.wav
 assets/
 
 # Test files
