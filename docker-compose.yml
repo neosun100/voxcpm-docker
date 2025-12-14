@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   voxcpm:
-    image: neosun/voxcpm-allinone:1.0.8
+    image: neosun/voxcpm-allinone:1.1.0-openai
     container_name: voxcpm-service
     runtime: nvidia
     environment:
@@ -13,9 +13,6 @@ services:
     ports:
       - "0.0.0.0:${PORT:-7861}:7861"
     volumes:
-      - ./server.py:/app/server.py
-      - ./gpu_manager.py:/app/gpu_manager.py
-      - ./cache_manager.py:/app/cache_manager.py
       - ./models:/app/models
       - /tmp/voxcpm-tts/uploads:/app/uploads
       - /tmp/voxcpm-tts/outputs:/app/outputs

@@ -1,8 +1,8 @@
 FROM nvidia/cuda:12.1.0-cudnn8-devel-ubuntu22.04
 
 LABEL maintainer="neosun"
-LABEL version="1.0.6"
-LABEL description="VoxCPM All-in-One TTS Service - Preload Models + Smart Cache"
+LABEL version="1.1.0"
+LABEL description="VoxCPM All-in-One TTS Service - OpenAI Compatible API + Streaming + Smart Cache"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -25,7 +25,7 @@ WORKDIR /app
 # Copy only necessary files
 COPY pyproject.toml ./
 COPY src ./src
-COPY server.py gpu_manager.py mcp_server.py cache_manager.py ./
+COPY server.py gpu_manager.py mcp_server.py cache_manager.py openai_api.py ./
 COPY README.md LICENSE ./
 
 # Install all dependencies

@@ -51,7 +51,7 @@ def preload_models():
     print("🎉 All models preloaded successfully!")
 
 # FastAPI app
-app = FastAPI(title="VoxCPM API", version="1.0.6")
+app = FastAPI(title="VoxCPM API", version="1.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -59,6 +59,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include OpenAI-compatible API
+from openai_api import router as openai_router
+app.include_router(openai_router)
 
 def load_model():
     model_path = os.getenv("HF_REPO_ID", "openbmb/VoxCPM1.5")
