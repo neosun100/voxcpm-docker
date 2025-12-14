@@ -8,6 +8,13 @@
 
 > **生产级 VoxCPM TTS 服务，支持 GPU 加速、OpenAI 兼容 API、自定义音色、流式输出**
 
+## 📚 文档导航
+
+| 文档 | 说明 |
+|------|------|
+| [API 使用指南](API_GUIDE.md) | 完整的 API 接口文档和使用示例 |
+| [流式输出指南](STREAMING_GUIDE.md) | 流式音频实现原理、优化经验和最佳实践 |
+
 ## ✨ 核心特性
 
 - 🚀 **OpenAI 兼容 API** - 直接替换 OpenAI TTS，无需改代码
