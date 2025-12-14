@@ -33,8 +33,6 @@ curl -s https://voxcpm-tts.aws.xin/v1/audio/speech \
   -o hello.wav
 ```
 
-**在线测试页面**: https://mytts.aws.xin
-
 ## 🐳 Docker 部署
 
 ### 方式一：Docker Run
@@ -176,8 +174,6 @@ curl -s http://localhost:7861/v1/audio/speech \
 
 ### Web 前端
 
-访问流式测试页面：**https://mytts.aws.xin**
-
 使用 Web Audio API 实现 PCM 流式播放，边生成边播放，无需等待完整音频。
 
 ## 📊 API 端点一览
@@ -210,8 +206,6 @@ curl -s http://localhost:7861/v1/audio/speech \
 |------|------|
 | API 服务 | https://voxcpm-tts.aws.xin |
 | API 文档 | https://voxcpm-tts.aws.xin/docs |
-| 流式测试 | https://mytts.aws.xin |
-| EdgeTTS 测试 | https://edge-tts.aws.xin |
 
 ## 📝 版本历史
 
