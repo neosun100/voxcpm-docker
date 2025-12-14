@@ -1,0 +1,506 @@
+[
+  {
+    "config": {
+      "api": "openai",
+      "text_type": "short",
+      "model": "tts-1",
+      "voice": "alloy",
+      "runs": 3
+    },
+    "runs": 3,
+    "first_byte_latency": {
+      "mean": 0.24976730346679688,
+      "min": 0.2167356014251709,
+      "max": 0.2784543037414551,
+      "stdev": 0.03108788958717599
+    },
+    "total_time": {
+      "mean": 5.709959665934245,
+      "min": 5.103083610534668,
+      "max": 6.279511213302612,
+      "stdev": 0.5891012776368864
+    },
+    "results": [
+      {
+        "text_length": 13,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.2784543037414551,
+        "total_time": 5.103083610534668,
+        "total_bytes": 144590,
+        "throughput_kbps": 221.35819461551932,
+        "config": {
+          "api": "openai",
+          "text_type": "short",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 13,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.25411200523376465,
+        "total_time": 5.747284173965454,
+        "total_bytes": 163615,
+        "throughput_kbps": 222.4080363539865,
+        "config": {
+          "api": "openai",
+          "text_type": "short",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 13,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.2167356014251709,
+        "total_time": 6.279511213302612,
+        "total_bytes": 178835,
+        "throughput_kbps": 222.49318299492157,
+        "config": {
+          "api": "openai",
+          "text_type": "short",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "openai",
+      "text_type": "medium",
+      "model": "tts-1",
+      "voice": "alloy",
+      "runs": 3
+    },
+    "runs": 3,
+    "first_byte_latency": {
+      "mean": 0.25510509808858234,
+      "min": 0.24762463569641113,
+      "max": 0.26314520835876465,
+      "stdev": 0.007775406629390552
+    },
+    "total_time": {
+      "mean": 13.901503086090088,
+      "min": 11.608251571655273,
+      "max": 17.257523775100708,
+      "stdev": 2.9708042422846903
+    },
+    "results": [
+      {
+        "text_length": 63,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.26314520835876465,
+        "total_time": 17.257523775100708,
+        "total_bytes": 498455,
+        "throughput_kbps": 225.65112690840115,
+        "config": {
+          "api": "openai",
+          "text_type": "medium",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 63,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.24762463569641113,
+        "total_time": 12.838733911514282,
+        "total_bytes": 369085,
+        "throughput_kbps": 224.59197163623622,
+        "config": {
+          "api": "openai",
+          "text_type": "medium",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 63,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.2545454502105713,
+        "total_time": 11.608251571655273,
+        "total_bytes": 334840,
+        "throughput_kbps": 225.35155133849167,
+        "config": {
+          "api": "openai",
+          "text_type": "medium",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "openai",
+      "text_type": "long",
+      "model": "tts-1",
+      "voice": "alloy",
+      "runs": 3
+    },
+    "runs": 3,
+    "first_byte_latency": {
+      "mean": 0.2304983933766683,
+      "min": 0.21656179428100586,
+      "max": 0.24927496910095215,
+      "stdev": 0.016885111252943914
+    },
+    "total_time": {
+      "mean": 36.40716965993246,
+      "min": 34.11328053474426,
+      "max": 37.7296097278595,
+      "stdev": 1.9943029261836207
+    },
+    "results": [
+      {
+        "text_length": 192,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.24927496910095215,
+        "total_time": 34.11328053474426,
+        "total_bytes": 989300,
+        "throughput_kbps": 226.5659042122359,
+        "config": {
+          "api": "openai",
+          "text_type": "long",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 192,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.22565841674804688,
+        "total_time": 37.3786187171936,
+        "total_bytes": 1084425,
+        "throughput_kbps": 226.6555213449601,
+        "config": {
+          "api": "openai",
+          "text_type": "long",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 192,
+        "voice": "alloy",
+        "model": "tts-1",
+        "format": "mp3",
+        "first_byte_latency": 0.21656179428100586,
+        "total_time": 37.7296097278595,
+        "total_bytes": 1088230,
+        "throughput_kbps": 225.33487455403716,
+        "config": {
+          "api": "openai",
+          "text_type": "long",
+          "model": "tts-1",
+          "voice": "alloy",
+          "runs": 3
+        }
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "openai",
+      "text_type": "medium",
+      "model": "tts-1-hd",
+      "voice": "nova",
+      "runs": 3
+    },
+    "runs": 3,
+    "first_byte_latency": {
+      "mean": 0.2787071069081624,
+      "min": 0.24914169311523438,
+      "max": 0.30896902084350586,
+      "stdev": 0.029919744653201654
+    },
+    "total_time": {
+      "mean": 17.011855681737263,
+      "min": 16.077630758285522,
+      "max": 17.744415760040283,
+      "stdev": 0.8514955037140819
+    },
+    "results": [
+      {
+        "text_length": 63,
+        "voice": "nova",
+        "model": "tts-1-hd",
+        "format": "mp3",
+        "first_byte_latency": 0.27801060676574707,
+        "total_time": 17.213520526885986,
+        "total_bytes": 391915,
+        "throughput_kbps": 177.87389469328397,
+        "config": {
+          "api": "openai",
+          "text_type": "medium",
+          "model": "tts-1-hd",
+          "voice": "nova",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 63,
+        "voice": "nova",
+        "model": "tts-1-hd",
+        "format": "mp3",
+        "first_byte_latency": 0.30896902084350586,
+        "total_time": 17.744415760040283,
+        "total_bytes": 403330,
+        "throughput_kbps": 177.57787394138734,
+        "config": {
+          "api": "openai",
+          "text_type": "medium",
+          "model": "tts-1-hd",
+          "voice": "nova",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 63,
+        "voice": "nova",
+        "model": "tts-1-hd",
+        "format": "mp3",
+        "first_byte_latency": 0.24914169311523438,
+        "total_time": 16.077630758285522,
+        "total_bytes": 365280,
+        "throughput_kbps": 177.49816766561423,
+        "config": {
+          "api": "openai",
+          "text_type": "medium",
+          "model": "tts-1-hd",
+          "voice": "nova",
+          "runs": 3
+        }
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "native",
+      "text_type": "short",
+      "voice_id": "default",
+      "runs": 3
+    },
+    "runs": 3,
+    "first_byte_latency": {
+      "mean": 0.18799567222595215,
+      "min": 0.16702055931091309,
+      "max": 0.20271801948547363,
+      "stdev": 0.018652076948310586
+    },
+    "total_time": {
+      "mean": 3.4232450326283774,
+      "min": 3.0214967727661133,
+      "max": 3.9860856533050537,
+      "stdev": 0.5020667173288946
+    },
+    "results": [
+      {
+        "text_length": 13,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.20271801948547363,
+        "total_time": 3.0214967727661133,
+        "total_bytes": 566240,
+        "throughput_kbps": 1464.0922472176446,
+        "config": {
+          "api": "native",
+          "text_type": "short",
+          "voice_id": "default",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 13,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.19424843788146973,
+        "total_time": 3.9860856533050537,
+        "total_bytes": 750268,
+        "throughput_kbps": 1470.4823879386477,
+        "config": {
+          "api": "native",
+          "text_type": "short",
+          "voice_id": "default",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 13,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.16702055931091309,
+        "total_time": 3.262152671813965,
+        "total_bytes": 622864,
+        "throughput_kbps": 1491.691373627257,
+        "config": {
+          "api": "native",
+          "text_type": "short",
+          "voice_id": "default",
+          "runs": 3
+        }
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "native",
+      "text_type": "medium",
+      "voice_id": "default",
+      "runs": 3
+    },
+    "runs": 3,
+    "first_byte_latency": {
+      "mean": 0.17406177520751953,
+      "min": 0.1613008975982666,
+      "max": 0.19626641273498535,
+      "stdev": 0.01930117258714248
+    },
+    "total_time": {
+      "mean": 8.287052551905314,
+      "min": 7.403713226318359,
+      "max": 8.796337842941284,
+      "stdev": 0.767976657378946
+    },
+    "results": [
+      {
+        "text_length": 63,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.1613008975982666,
+        "total_time": 7.403713226318359,
+        "total_bytes": 1415600,
+        "throughput_kbps": 1493.760584984123,
+        "config": {
+          "api": "native",
+          "text_type": "medium",
+          "voice_id": "default",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 63,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.16461801528930664,
+        "total_time": 8.796337842941284,
+        "total_bytes": 1698720,
+        "throughput_kbps": 1508.7244529437505,
+        "config": {
+          "api": "native",
+          "text_type": "medium",
+          "voice_id": "default",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 63,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.19626641273498535,
+        "total_time": 8.661106586456299,
+        "total_bytes": 1656252,
+        "throughput_kbps": 1493.9740806600785,
+        "config": {
+          "api": "native",
+          "text_type": "medium",
+          "voice_id": "default",
+          "runs": 3
+        }
+      }
+    ]
+  },
+  {
+    "config": {
+      "api": "native",
+      "text_type": "long",
+      "voice_id": "default",
+      "runs": 3
+    },
+    "runs": 3,
+    "first_byte_latency": {
+      "mean": 0.17578458786010742,
+      "min": 0.16362380981445312,
+      "max": 0.1972649097442627,
+      "stdev": 0.01865666969585313
+    },
+    "total_time": {
+      "mean": 20.27475865681966,
+      "min": 19.35478115081787,
+      "max": 20.842631816864014,
+      "stdev": 0.8039950273136482
+    },
+    "results": [
+      {
+        "text_length": 192,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.16646504402160645,
+        "total_time": 20.842631816864014,
+        "total_bytes": 4034460,
+        "throughput_kbps": 1512.2475427742017,
+        "config": {
+          "api": "native",
+          "text_type": "long",
+          "voice_id": "default",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 192,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.16362380981445312,
+        "total_time": 19.35478115081787,
+        "total_bytes": 3638092,
+        "throughput_kbps": 1468.5050442329052,
+        "config": {
+          "api": "native",
+          "text_type": "long",
+          "voice_id": "default",
+          "runs": 3
+        }
+      },
+      {
+        "text_length": 192,
+        "voice_id": "default",
+        "api_type": "native",
+        "first_byte_latency": 0.1972649097442627,
+        "total_time": 20.6268630027771,
+        "total_bytes": 3864588,
+        "throughput_kbps": 1463.7268762552544,
+        "config": {
+          "api": "native",
+          "text_type": "long",
+          "voice_id": "default",
+          "runs": 3
+        }
+      }
+    ]
+  }
+]
