@@ -103,3 +103,5 @@ htmlcov/
 
 # WeChat article - do not push to GitHub
 wechat_article.md
+# Conversation context (private)
+CONVERSATION_CONTEXT.md
