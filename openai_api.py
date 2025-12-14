@@ -5,9 +5,11 @@ Implements /v1/audio/speech endpoint with full OpenAI compatibility
 import os
 import time
 import io
+import json
+import hashlib
 import soundfile as sf
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
@@ -18,6 +20,9 @@ router = APIRouter(prefix="/v1", tags=["OpenAI Compatible"])
 
 UPLOAD_DIR = Path("/app/uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+VOICES_DIR = Path("/app/voices")
+VOICES_DIR.mkdir(exist_ok=True)
+VOICES_DB = VOICES_DIR / "voices.json"
 
 # Voice mapping: OpenAI voices -> VoxCPM preset voices
 VOICE_MAPPING = {
@@ -42,10 +47,37 @@ PRESET_VOICES = {
     }
 }
 
+def load_custom_voices():
+    """Load custom voices from database"""
+    if VOICES_DB.exists():
+        with open(VOICES_DB, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_custom_voices(voices):
+    """Save custom voices to database"""
+    with open(VOICES_DB, 'w') as f:
+        json.dump(voices, f, ensure_ascii=False, indent=2)
+
+def get_voice_config(voice_id: str):
+    """Get voice configuration by ID (preset or custom)"""
+    # Check preset voices first
+    preset_key = VOICE_MAPPING.get(voice_id)
+    if preset_key and preset_key in PRESET_VOICES:
+        return PRESET_VOICES[preset_key]
+    
+    # Check custom voices
+    custom_voices = load_custom_voices()
+    if voice_id in custom_voices:
+        return custom_voices[voice_id]
+    
+    # Default fallback
+    return PRESET_VOICES["default"]
+
 class SpeechRequest(BaseModel):
     model: Literal["tts-1", "tts-1-hd", "gpt-4o-mini-tts"] = Field(default="tts-1")
     input: str = Field(..., max_length=4096)
-    voice: Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer", "ash", "ballad", "coral", "sage", "verse"] = Field(default="alloy")
+    voice: str = Field(default="alloy")  # 支持预设或自定义 voice_id
     response_format: Optional[Literal["mp3", "opus", "aac", "flac", "wav", "pcm"]] = Field(default="mp3")
     speed: Optional[float] = Field(default=1.0, ge=0.25, le=4.0)
 
@@ -101,13 +133,13 @@ async def create_speech(request: SpeechRequest):
     """
     OpenAI-compatible TTS endpoint
     Generates audio from input text with streaming support
+    Supports both preset voices (alloy, echo, etc.) and custom voice IDs
     """
     try:
-        # Map OpenAI voice to VoxCPM preset
-        voxcpm_voice = VOICE_MAPPING.get(request.voice, "default")
-        preset = PRESET_VOICES.get(voxcpm_voice)
+        # Get voice configuration (preset or custom)
+        preset = get_voice_config(request.voice)
         
-        if not preset:
+        if not preset or not Path(preset["path"]).exists():
             raise HTTPException(status_code=400, detail=f"Voice '{request.voice}' not available")
         
         # Load model
@@ -258,3 +290,125 @@ async def list_voices():
             {"id": "verse", "name": "Verse"}
         ]
     }
+
+# ============ Custom Voice API ============
+
+@router.post("/voices/create")
+async def create_voice(
+    audio: UploadFile = File(..., description="参考音频文件 (WAV/MP3)"),
+    name: str = Form(..., description="音色名称"),
+    text: str = Form(..., description="音频对应的文本内容")
+):
+    """
+    上传音频创建自定义音色
+    返回 voice_id，可在 /v1/audio/speech 的 voice 参数中使用
+    """
+    try:
+        # 读取音频文件
+        content = await audio.read()
+        
+        # 生成唯一 ID (基于内容哈希)
+        voice_id = hashlib.md5(content).hexdigest()[:12]
+        
+        # 保存音频文件
+        audio_path = VOICES_DIR / f"{voice_id}.wav"
+        
+        # 如果不是 WAV 格式，转换为 WAV
+        if audio.filename.lower().endswith('.mp3'):
+            import subprocess
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+            subprocess.run([
+                'ffmpeg', '-y', '-i', tmp_path,
+                '-ar', '44100', '-ac', '1',
+                str(audio_path)
+            ], check=True, capture_output=True)
+            os.unlink(tmp_path)
+        else:
+            # 直接保存或转换 WAV
+            audio_data, sr = sf.read(io.BytesIO(content))
+            sf.write(str(audio_path), audio_data, sr, format='WAV', subtype='PCM_16')
+        
+        # 保存到数据库
+        custom_voices = load_custom_voices()
+        custom_voices[voice_id] = {
+            "path": str(audio_path),
+            "text": text,
+            "name": name,
+            "created_at": int(time.time())
+        }
+        save_custom_voices(custom_voices)
+        
+        return {
+            "success": True,
+            "voice_id": voice_id,
+            "name": name,
+            "message": f"音色创建成功，使用 voice='{voice_id}' 调用 /v1/audio/speech"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/voices/custom")
+async def list_custom_voices():
+    """列出所有自定义音色"""
+    custom_voices = load_custom_voices()
+    return {
+        "voices": [
+            {
+                "id": vid,
+                "name": v.get("name", vid),
+                "text": v.get("text", ""),
+                "created_at": v.get("created_at", 0)
+            }
+            for vid, v in custom_voices.items()
+        ]
+    }
+
+@router.get("/voices/{voice_id}")
+async def get_voice(voice_id: str):
+    """获取音色详情"""
+    # 检查预设音色
+    if voice_id in VOICE_MAPPING:
+        return {
+            "id": voice_id,
+            "type": "preset",
+            "name": voice_id.capitalize()
+        }
+    
+    # 检查自定义音色
+    custom_voices = load_custom_voices()
+    if voice_id in custom_voices:
+        v = custom_voices[voice_id]
+        return {
+            "id": voice_id,
+            "type": "custom",
+            "name": v.get("name", voice_id),
+            "text": v.get("text", ""),
+            "created_at": v.get("created_at", 0)
+        }
+    
+    raise HTTPException(status_code=404, detail=f"Voice '{voice_id}' not found")
+
+@router.delete("/voices/{voice_id}")
+async def delete_voice(voice_id: str):
+    """删除自定义音色"""
+    if voice_id in VOICE_MAPPING:
+        raise HTTPException(status_code=400, detail="Cannot delete preset voice")
+    
+    custom_voices = load_custom_voices()
+    if voice_id not in custom_voices:
+        raise HTTPException(status_code=404, detail=f"Voice '{voice_id}' not found")
+    
+    # 删除音频文件
+    audio_path = Path(custom_voices[voice_id]["path"])
+    if audio_path.exists():
+        audio_path.unlink()
+    
+    # 从数据库删除
+    del custom_voices[voice_id]
+    save_custom_voices(custom_voices)
+    
+    return {"success": True, "message": f"Voice '{voice_id}' deleted"}
