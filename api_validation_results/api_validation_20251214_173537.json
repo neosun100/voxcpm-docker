@@ -1,0 +1,320 @@
+{
+  "test_info": {
+    "timestamp": "2025-12-14T17:35:37.602277",
+    "duration_seconds": 201.38734483718872,
+    "runs_per_test": 5,
+    "base_url": "http://localhost:7861"
+  },
+  "test_texts": {
+    "short": "你好，欢迎使用VoxCPM。",
+    "medium": "你好，这是VoxCPM语音合成系统。今天我们要测试流式API的性能表现，看看首字节响应时间能提升多少。",
+    "long": "你好，欢迎使用VoxCPM语音合成系统。这是一个基于深度学习的高质量文本转语音服务。我们今天要进行完整的API功能验证，包括默认语音合成、声音克隆、流式输出等多个功能。通过对比测试，我们将验证流式API是否真的能够显著降低首字节响应延迟，提升用户体验。"
+  },
+  "detailed_results": {
+    "short": {
+      "normal": [
+        {
+          "success": true,
+          "first_byte_time": 1.2046363353729248,
+          "total_time": 1.205305576324463,
+          "total_bytes": 268172,
+          "chunk_count": 33,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.8162052631378174,
+          "total_time": 0.8166060447692871,
+          "total_bytes": 183500,
+          "chunk_count": 23,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 1.2252109050750732,
+          "total_time": 1.2261261940002441,
+          "total_bytes": 268172,
+          "chunk_count": 33,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.9031932353973389,
+          "total_time": 0.9036741256713867,
+          "total_bytes": 197612,
+          "chunk_count": 25,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.8983170986175537,
+          "total_time": 0.8987729549407959,
+          "total_bytes": 197612,
+          "chunk_count": 25,
+          "text_length": 14
+        }
+      ],
+      "streaming": [
+        {
+          "success": true,
+          "first_byte_time": 0.08798575401306152,
+          "total_time": 1.285057544708252,
+          "total_bytes": 254808,
+          "chunk_count": 36,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07655620574951172,
+          "total_time": 1.1268079280853271,
+          "total_bytes": 226496,
+          "chunk_count": 32,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.0774073600769043,
+          "total_time": 0.9238626956939697,
+          "total_bytes": 184028,
+          "chunk_count": 26,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07980823516845703,
+          "total_time": 1.1936943531036377,
+          "total_bytes": 240652,
+          "chunk_count": 34,
+          "text_length": 14
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07589578628540039,
+          "total_time": 1.0430316925048828,
+          "total_bytes": 212340,
+          "chunk_count": 30,
+          "text_length": 14
+        }
+      ]
+    },
+    "medium": {
+      "normal": [
+        {
+          "success": true,
+          "first_byte_time": 4.76282000541687,
+          "total_time": 4.764996528625488,
+          "total_bytes": 1058444,
+          "chunk_count": 130,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 3.725489616394043,
+          "total_time": 3.7279000282287598,
+          "total_bytes": 818540,
+          "chunk_count": 100,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 3.8775792121887207,
+          "total_time": 3.8794772624969482,
+          "total_bytes": 832652,
+          "chunk_count": 102,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 4.025930643081665,
+          "total_time": 4.028225898742676,
+          "total_bytes": 874988,
+          "chunk_count": 107,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 4.403846263885498,
+          "total_time": 4.40617823600769,
+          "total_bytes": 959660,
+          "chunk_count": 118,
+          "text_length": 51
+        }
+      ],
+      "streaming": [
+        {
+          "success": true,
+          "first_byte_time": 0.07695865631103516,
+          "total_time": 5.745694160461426,
+          "total_bytes": 1160792,
+          "chunk_count": 164,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.0764920711517334,
+          "total_time": 4.139484643936157,
+          "total_bytes": 849360,
+          "chunk_count": 120,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07630228996276855,
+          "total_time": 4.909698486328125,
+          "total_bytes": 990920,
+          "chunk_count": 140,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07865214347839355,
+          "total_time": 4.019092321395874,
+          "total_bytes": 806892,
+          "chunk_count": 114,
+          "text_length": 51
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07631492614746094,
+          "total_time": 4.404801607131958,
+          "total_bytes": 905984,
+          "chunk_count": 128,
+          "text_length": 51
+        }
+      ]
+    },
+    "long": {
+      "normal": [
+        {
+          "success": true,
+          "first_byte_time": 7.829961061477661,
+          "total_time": 7.834737539291382,
+          "total_bytes": 1707596,
+          "chunk_count": 209,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 8.597399711608887,
+          "total_time": 8.60194993019104,
+          "total_bytes": 1876940,
+          "chunk_count": 230,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 8.885331630706787,
+          "total_time": 8.89008617401123,
+          "total_bytes": 1975724,
+          "chunk_count": 242,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 9.798978090286255,
+          "total_time": 9.80460810661316,
+          "total_bytes": 2159180,
+          "chunk_count": 264,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 9.066669702529907,
+          "total_time": 9.071389198303223,
+          "total_bytes": 1961612,
+          "chunk_count": 240,
+          "text_length": 126
+        }
+      ],
+      "streaming": [
+        {
+          "success": true,
+          "first_byte_time": 0.08391952514648438,
+          "total_time": 7.664577484130859,
+          "total_bytes": 1557160,
+          "chunk_count": 220,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07843160629272461,
+          "total_time": 10.185003519058228,
+          "total_bytes": 2052620,
+          "chunk_count": 290,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07679581642150879,
+          "total_time": 8.408668756484985,
+          "total_bytes": 1698720,
+          "chunk_count": 240,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07848286628723145,
+          "total_time": 9.167759418487549,
+          "total_bytes": 1854436,
+          "chunk_count": 262,
+          "text_length": 126
+        },
+        {
+          "success": true,
+          "first_byte_time": 0.07683992385864258,
+          "total_time": 7.095373153686523,
+          "total_bytes": 1415600,
+          "chunk_count": 200,
+          "text_length": 126
+        }
+      ]
+    }
+  },
+  "comparisons": [
+    {
+      "text_type": "short",
+      "improvement_percent": 92.12187437606316,
+      "improvement_seconds": 0.9299818992614746,
+      "normal_first_byte": 1.0095125675201415,
+      "streaming_first_byte": 0.07953066825866699
+    },
+    {
+      "text_type": "medium",
+      "improvement_percent": 98.14999869759636,
+      "improvement_seconds": 4.082189130783081,
+      "normal_first_byte": 4.1591331481933596,
+      "streaming_first_byte": 0.07694401741027831
+    },
+    {
+      "text_type": "long",
+      "improvement_percent": 99.10709697048132,
+      "improvement_seconds": 8.75677409172058,
+      "normal_first_byte": 8.835668039321899,
+      "streaming_first_byte": 0.07889394760131836
+    }
+  ],
+  "additional_apis": {
+    "gpu_status": {
+      "success": true,
+      "data": {
+        "model_loaded": true,
+        "memory_allocated_gb": 2.43,
+        "memory_reserved_gb": 4.68,
+        "device_name": "NVIDIA L40S"
+      }
+    },
+    "health": {
+      "success": true,
+      "data": {
+        "status": "healthy",
+        "model_loaded": true,
+        "version": "1.0.8"
+      }
+    }
+  },
+  "summary": {
+    "average_improvement_percent": 96.45965668138028,
+    "average_improvement_seconds": 4.589648373921712,
+    "total_tests": 30
+  }
+}

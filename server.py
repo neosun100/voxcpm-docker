@@ -3,7 +3,7 @@ import time
 import soundfile as sf
 from pathlib import Path
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import gradio as gr
 import uvicorn
@@ -11,6 +11,8 @@ from gpu_manager import gpu_manager
 from cache_manager import cache_manager
 import voxcpm
 import torch
+import io
+import numpy as np
 
 PORT = int(os.getenv("PORT", "7861"))
 OUTPUT_DIR = Path("/app/outputs")
@@ -135,6 +137,89 @@ def gpu_status():
             "device_name": torch.cuda.get_device_name(0)
         }
     return {"error": "CUDA not available"}
+
+# Preloaded reference audios
+PRESET_VOICES = {
+    "default": {
+        "path": "/app/examples/example.wav",
+        "text": "这是一个示例参考音频",
+        "description": "默认参考音频"
+    }
+}
+
+@app.get("/api/voices")
+def list_voices():
+    """List available preset voices"""
+    return {
+        "voices": [
+            {
+                "id": voice_id,
+                "description": info["description"],
+                "text": info["text"]
+            }
+            for voice_id, info in PRESET_VOICES.items()
+        ]
+    }
+
+@app.post("/api/tts/stream")
+async def tts_stream(
+    text: str = Form(...),
+    voice_id: str = Form(None),  # NEW: preset voice ID
+    prompt_audio: UploadFile = File(None),
+    prompt_text: str = Form(None),
+    cfg_value: float = Form(2.0),
+    inference_timesteps: int = Form(DEFAULT_TIMESTEPS),
+    min_len: int = Form(2),
+    max_len: int = Form(4096),
+    normalize: bool = Form(False),
+    denoise: bool = Form(False),
+):
+    """Streaming Text-to-Speech API - returns audio chunks as they are generated"""
+    try:
+        prompt_wav_path = None
+        
+        # Priority: voice_id > prompt_audio
+        if voice_id and voice_id in PRESET_VOICES:
+            # Use preset voice
+            preset = PRESET_VOICES[voice_id]
+            prompt_wav_path = preset["path"]
+            if not prompt_text:
+                prompt_text = preset["text"]
+        elif prompt_audio:
+            # Use uploaded audio
+            prompt_wav_path = UPLOAD_DIR / f"prompt_{int(time.time())}_{prompt_audio.filename}"
+            with open(prompt_wav_path, "wb") as f:
+                f.write(await prompt_audio.read())
+            prompt_wav_path = str(prompt_wav_path)
+        
+        model = gpu_manager.get_model(load_model)
+        
+        def audio_stream():
+            chunk_count = 0
+            for wav_chunk in model.generate_streaming(
+                text=text,
+                prompt_wav_path=prompt_wav_path,
+                prompt_text=prompt_text,
+                cfg_value=cfg_value,
+                inference_timesteps=inference_timesteps,
+                min_len=min_len,
+                max_len=max_len,
+                normalize=normalize,
+                denoise=denoise,
+                retry_badcase=False,  # Streaming doesn't support retry
+            ):
+                chunk_count += 1
+                buffer = io.BytesIO()
+                sf.write(buffer, wav_chunk, model.tts_model.sample_rate, format='WAV', subtype='PCM_16')
+                buffer.seek(0)
+                chunk_data = buffer.read()
+                print(f"🎵 Streaming chunk {chunk_count}: {len(chunk_data)} bytes, audio length: {len(wav_chunk)/model.tts_model.sample_rate:.2f}s")
+                yield chunk_data
+        
+        return StreamingResponse(audio_stream(), media_type="audio/wav")
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Gradio UI - Chinese Interface
 def create_ui():
@@ -416,14 +501,19 @@ def create_ui():
             if model is None:
                 model = gpu_manager.get_model(load_model)
             
-            wav = model.generate(
+            # 使用流式生成（更快的首块响应）
+            chunks = []
+            for wav_chunk in model.generate_streaming(
                 text=text, 
                 cfg_value=cfg, 
                 inference_timesteps=steps,
                 normalize=norm, 
                 denoise=den,
-                retry_badcase=retry
-            )
+                retry_badcase=False  # 流式不支持retry
+            ):
+                chunks.append(wav_chunk)
+            
+            wav = np.concatenate(chunks)
             path = OUTPUT_DIR / f"synth_{int(time.time())}.wav"
             sf.write(path, wav, model.tts_model.sample_rate)
             return str(path)
@@ -477,7 +567,9 @@ def create_ui():
             if model is None:
                 model = gpu_manager.get_model(load_model)
             
-            wav = model.generate(
+            # 使用流式生成
+            chunks = []
+            for wav_chunk in model.generate_streaming(
                 text=text, 
                 prompt_wav_path=audio_path, 
                 prompt_text=transcript,
@@ -485,8 +577,11 @@ def create_ui():
                 inference_timesteps=steps,
                 normalize=norm,
                 denoise=den,
-                retry_badcase=retry
-            )
+                retry_badcase=False  # 流式不支持retry
+            ):
+                chunks.append(wav_chunk)
+            
+            wav = np.concatenate(chunks)
             path = OUTPUT_DIR / f"clone_{int(time.time())}.wav"
             sf.write(path, wav, model.tts_model.sample_rate)
             return str(path), status_msg
