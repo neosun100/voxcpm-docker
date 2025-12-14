@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoxCPM 流式 TTS 演示</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        select, button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        select {
+            flex: 1;
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+        }
+        button {
+            flex: 2;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transition: transform 0.2s;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .metric {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .progress-container {
+            background: #f0f0f0;
+            border-radius: 10px;
+            height: 40px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .status.info { background: #e3f2fd; color: #1976d2; }
+        .status.success { background: #e8f5e9; color: #388e3c; }
+        .status.error { background: #ffebee; color: #d32f2f; }
+        .audio-player {
+            width: 100%;
+            margin-top: 20px;
+        }
+        .highlight {
+            animation: pulse 0.5s;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ VoxCPM 流式 TTS 演示</h1>
+        <p class="subtitle">实时体验流式音频生成速度</p>
+
+        <div class="input-group">
+            <label>输入文本：</label>
+            <textarea id="textInput" placeholder="输入要合成的文本...">你好，这是 VoxCPM 流式语音合成演示。通过流式传输，音频可以边生成边播放，大大减少了等待时间。</textarea>
+        </div>
+
+        <div class="controls">
+            <select id="apiType">
+                <option value="openai">OpenAI API (优化)</option>
+                <option value="native">Native API</option>
+            </select>
+            <button id="generateBtn" onclick="generateAudio()">🎙️ 开始生成</button>
+        </div>
+
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-label">首字节延迟</div>
+                <div class="metric-value" id="firstByte">-</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">总时间</div>
+                <div class="metric-value" id="totalTime">-</div>
+            </div>
+            <div class="metric">
+                <div class="metric-label">数据大小</div>
+                <div class="metric-value" id="dataSize">-</div>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar">0%</div>
+        </div>
+
+        <div id="status" class="status info" style="display: none;"></div>
+
+        <audio id="audioPlayer" class="audio-player" controls style="display: none;"></audio>
+    </div>
+
+    <script>
+        let startTime, firstByteTime;
+        let receivedBytes = 0;
+
+        function showStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function updateMetric(id, value, highlight = false) {
+            const elem = document.getElementById(id);
+            elem.textContent = value;
+            if (highlight) {
+                elem.parentElement.classList.add('highlight');
+                setTimeout(() => elem.parentElement.classList.remove('highlight'), 500);
+            }
+        }
+
+        async function generateAudio() {
+            const text = document.getElementById('textInput').value.trim();
+            if (!text) {
+                showStatus('请输入文本', 'error');
+                return;
+            }
+
+            const apiType = document.getElementById('apiType').value;
+            const btn = document.getElementById('generateBtn');
+            const progressBar = document.getElementById('progressBar');
+            const audioPlayer = document.getElementById('audioPlayer');
+
+            // 重置
+            btn.disabled = true;
+            audioPlayer.style.display = 'none';
+            receivedBytes = 0;
+            firstByteTime = null;
+            updateMetric('firstByte', '-');
+            updateMetric('totalTime', '-');
+            updateMetric('dataSize', '-');
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+
+            showStatus('🚀 开始生成音频...', 'info');
+
+            try {
+                startTime = performance.now();
+
+                let url, body;
+                if (apiType === 'openai') {
+                    url = 'https://voxcpm-tts.aws.xin/v1/audio/speech';
+                    body = JSON.stringify({
+                        model: 'tts-1',
+                        input: text,
+                        voice: 'alloy',
+                        response_format: 'wav'
+                    });
+                } else {
+                    url = 'https://voxcpm-tts.aws.xin/api/tts/stream';
+                    const formData = new FormData();
+                    formData.append('text', text);
+                    formData.append('voice_id', 'default');
+                    formData.append('cfg_value', '2.0');
+                    formData.append('inference_timesteps', '5');
+                    body = formData;
+                }
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: apiType === 'openai' ? {'Content-Type': 'application/json'} : {},
+                    body: body
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const reader = response.body.getReader();
+                const chunks = [];
+
+                while (true) {
+                    const {done, value} = await reader.read();
+                    
+                    if (done) break;
+
+                    if (!firstByteTime) {
+                        firstByteTime = performance.now();
+                        const latency = ((firstByteTime - startTime) / 1000).toFixed(3);
+                        updateMetric('firstByte', `${latency}s`, true);
+                        showStatus(`⚡ 首字节到达！延迟: ${latency}s`, 'success');
+                    }
+
+                    receivedBytes += value.length;
+                    chunks.push(value);
+
+                    // 更新进度（估算）
+                    const elapsed = (performance.now() - startTime) / 1000;
+                    const progress = Math.min(95, elapsed * 10);
+                    progressBar.style.width = `${progress}%`;
+                    progressBar.textContent = `${Math.round(progress)}%`;
+                    
+                    updateMetric('dataSize', `${(receivedBytes / 1024).toFixed(0)}KB`);
+                    updateMetric('totalTime', `${elapsed.toFixed(2)}s`);
+                }
+
+                // 完成
+                const totalTime = ((performance.now() - startTime) / 1000).toFixed(2);
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                updateMetric('totalTime', `${totalTime}s`, true);
+
+                // 创建音频
+                const blob = new Blob(chunks, {type: 'audio/wav'});
+                const audioUrl = URL.createObjectURL(blob);
+                audioPlayer.src = audioUrl;
+                audioPlayer.style.display = 'block';
+                audioPlayer.play();
+
+                showStatus(`✅ 生成完成！总时间: ${totalTime}s`, 'success');
+
+            } catch (error) {
+                showStatus(`❌ 错误: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // 回车生成
+        document.getElementById('textInput').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                generateAudio();
+            }
+        });
+    </script>
+</body>
+</html>
