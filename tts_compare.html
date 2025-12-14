@@ -69,6 +69,7 @@
         }
         .status-box.idle { background: #f1f5f9; color: #64748b; }
         .status-box.loading { background: #fef3c7; color: #92400e; }
+        .status-box.playing { background: #dbeafe; color: #1e40af; }
         .status-box.success { background: #d1fae5; color: #065f46; }
         .status-box.error { background: #fee2e2; color: #991b1b; }
         
@@ -87,7 +88,7 @@
 <body>
     <div class="container">
         <h1>⚡ TTS 流式输出对比测试</h1>
-        <p class="subtitle">VoxCPM vs EdgeTTS 性能对比</p>
+        <p class="subtitle">VoxCPM vs EdgeTTS 性能对比 | 边接收边播放</p>
         
         <div class="config-row">
             <div class="section">
@@ -112,7 +113,7 @@
         <div class="btn-group">
             <button class="play-btn btn-voxcpm" id="btnVoxcpm" onclick="testVoxCPM()">
                 🎙️ VoxCPM
-                <span class="btn-label">OpenAI 兼容 API</span>
+                <span class="btn-label">边生成边播放</span>
             </button>
             <button class="play-btn btn-edge" id="btnEdge" onclick="testEdgeTTS()">
                 🔊 EdgeTTS
@@ -121,12 +122,15 @@
         </div>
         
         <div class="results">
-            <!-- VoxCPM 结果 -->
             <div class="result-card voxcpm">
                 <h3>🎙️ VoxCPM <span id="winnerVoxcpm" class="winner-badge" style="display:none">🏆 更快</span></h3>
                 <div class="metric-row">
-                    <span class="metric-label">响应时间</span>
+                    <span class="metric-label">首字节延迟</span>
                     <span class="metric-value" id="voxcpmFirstByte">-</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">开始播放</span>
+                    <span class="metric-value" id="voxcpmPlayStart">-</span>
                 </div>
                 <div class="metric-row">
                     <span class="metric-label">总时间</span>
@@ -142,12 +146,15 @@
                 <div class="status-box idle" id="statusVoxcpm">点击按钮开始测试</div>
             </div>
             
-            <!-- EdgeTTS 结果 -->
             <div class="result-card edge">
                 <h3>🔊 EdgeTTS <span id="winnerEdge" class="winner-badge" style="display:none">🏆 更快</span></h3>
                 <div class="metric-row">
-                    <span class="metric-label">响应时间</span>
+                    <span class="metric-label">首字节延迟</span>
                     <span class="metric-value" id="edgeFirstByte">-</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">开始播放</span>
+                    <span class="metric-value" id="edgePlayStart">-</span>
                 </div>
                 <div class="metric-row">
                     <span class="metric-label">总时间</span>
@@ -167,6 +174,14 @@
 
     <script>
         let results = { voxcpm: null, edge: null };
+        let audioContext = null;
+        
+        function getAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
         
         function setStatus(id, message, type) {
             const el = document.getElementById(id);
@@ -187,9 +202,9 @@
             document.getElementById('winnerEdge').style.display = 'none';
             
             if (results.voxcpm && results.edge) {
-                if (results.voxcpm.total < results.edge.total) {
+                if (results.voxcpm.firstByte < results.edge.firstByte) {
                     document.getElementById('winnerVoxcpm').style.display = 'inline';
-                } else if (results.edge.total < results.voxcpm.total) {
+                } else if (results.edge.firstByte < results.voxcpm.firstByte) {
                     document.getElementById('winnerEdge').style.display = 'inline';
                 }
             }
@@ -204,14 +219,21 @@
             btn.disabled = true;
             audio.src = '';
             
-            setStatus('statusVoxcpm', '⚡ 正在生成...', 'loading');
+            setStatus('statusVoxcpm', '⚡ 连接中...', 'loading');
             setMetric('voxcpmFirstByte', '...');
+            setMetric('voxcpmPlayStart', '...');
             setMetric('voxcpmTotal', '...');
             setMetric('voxcpmSize', '...');
             
-            const startTime = Date.now();
+            const startTime = performance.now();
+            let firstByteTime = null;
+            let playStartTime = null;
+            let receivedBytes = 0;
             
             try {
+                const ctx = getAudioContext();
+                if (ctx.state === 'suspended') await ctx.resume();
+                
                 const response = await fetch('https://voxcpm-tts.aws.xin/v1/audio/speech', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -225,39 +247,59 @@
                 
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
-                const responseTime = Date.now() - startTime;
-                setMetric('voxcpmFirstByte', responseTime + 'ms', responseTime < 1000);
-                setStatus('statusVoxcpm', '📥 下载音频...', 'loading');
+                const reader = response.body.getReader();
+                const chunks = [];
                 
-                // 直接获取 blob，不用流式读取
-                const blob = await response.blob();
-                const totalTime = Date.now() - startTime;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    if (!firstByteTime) {
+                        firstByteTime = performance.now();
+                        const latency = ((firstByteTime - startTime) / 1000).toFixed(3);
+                        setMetric('voxcpmFirstByte', latency + 's', parseFloat(latency) < 1);
+                        setStatus('statusVoxcpm', '📥 接收数据中...', 'loading');
+                    }
+                    
+                    receivedBytes += value.length;
+                    chunks.push(value);
+                    setMetric('voxcpmSize', (receivedBytes / 1024).toFixed(0) + ' KB');
+                    
+                    // 当收到足够数据时开始播放
+                    if (!playStartTime && receivedBytes > 50000) {
+                        playStartTime = performance.now();
+                        const playLatency = ((playStartTime - startTime) / 1000).toFixed(3);
+                        setMetric('voxcpmPlayStart', playLatency + 's', parseFloat(playLatency) < 2);
+                        setStatus('statusVoxcpm', '🔊 播放中...', 'playing');
+                        
+                        // 开始播放已收到的数据
+                        const partialBlob = new Blob(chunks, { type: 'audio/wav' });
+                        audio.src = URL.createObjectURL(partialBlob);
+                        audio.play().catch(() => {});
+                    }
+                }
                 
-                setMetric('voxcpmTotal', (totalTime / 1000).toFixed(2) + 's');
-                setMetric('voxcpmSize', (blob.size / 1024).toFixed(0) + ' KB');
+                const totalTime = ((performance.now() - startTime) / 1000).toFixed(2);
+                const firstByte = (firstByteTime - startTime) / 1000;
                 
-                results.voxcpm = { response: responseTime, total: totalTime };
+                setMetric('voxcpmTotal', totalTime + 's');
+                results.voxcpm = { firstByte, total: parseFloat(totalTime) };
                 compareResults();
                 
-                // 创建音频 URL 并播放
-                const url = URL.createObjectURL(blob);
-                audio.src = url;
+                // 播放完整音频
+                const blob = new Blob(chunks, { type: 'audio/wav' });
+                audio.src = URL.createObjectURL(blob);
                 
-                audio.onloadedmetadata = () => {
-                    setStatus('statusVoxcpm', `✅ 完成！时长 ${audio.duration.toFixed(1)}s`, 'success');
-                };
+                if (!playStartTime) {
+                    playStartTime = performance.now();
+                    setMetric('voxcpmPlayStart', ((playStartTime - startTime) / 1000).toFixed(3) + 's');
+                    audio.play().catch(() => {});
+                }
                 
-                audio.onerror = () => {
-                    setStatus('statusVoxcpm', '❌ 音频加载失败', 'error');
-                };
-                
-                audio.play().catch(() => {
-                    setStatus('statusVoxcpm', `✅ 完成！点击播放`, 'success');
-                });
+                setStatus('statusVoxcpm', `✅ 完成！首字节 ${firstByte.toFixed(3)}s`, 'success');
                 
             } catch (error) {
                 setStatus('statusVoxcpm', '❌ ' + error.message, 'error');
-                setMetric('voxcpmFirstByte', '错误');
             } finally {
                 btn.disabled = false;
             }
@@ -271,7 +313,6 @@
             if (!text) { alert('请输入文本'); return; }
             if (!apiKey) { alert('请输入 EdgeTTS API Key'); return; }
             
-            // 保存 API Key
             localStorage.setItem('edgetts_api_key', apiKey);
             
             const btn = document.getElementById('btnEdge');
@@ -279,12 +320,13 @@
             btn.disabled = true;
             audio.src = '';
             
-            setStatus('statusEdge', '⚡ 正在生成...', 'loading');
+            setStatus('statusEdge', '⚡ 连接中...', 'loading');
             setMetric('edgeFirstByte', '...');
+            setMetric('edgePlayStart', '...');
             setMetric('edgeTotal', '...');
             setMetric('edgeSize', '...');
             
-            const startTime = Date.now();
+            const startTime = performance.now();
             
             try {
                 const response = await fetch('https://edgetts.aws.xin/v1/audio/speech', {
@@ -303,47 +345,36 @@
                 
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 
-                const responseTime = Date.now() - startTime;
-                setMetric('edgeFirstByte', responseTime + 'ms', responseTime < 1000);
-                setStatus('statusEdge', '📥 下载音频...', 'loading');
+                const firstByteTime = performance.now();
+                const firstByte = (firstByteTime - startTime) / 1000;
+                setMetric('edgeFirstByte', firstByte.toFixed(3) + 's', firstByte < 1);
+                setStatus('statusEdge', '📥 接收数据...', 'loading');
                 
                 const blob = await response.blob();
-                const totalTime = Date.now() - startTime;
+                const totalTime = ((performance.now() - startTime) / 1000).toFixed(2);
                 
-                setMetric('edgeTotal', (totalTime / 1000).toFixed(2) + 's');
+                setMetric('edgeTotal', totalTime + 's');
                 setMetric('edgeSize', (blob.size / 1024).toFixed(0) + ' KB');
+                setMetric('edgePlayStart', totalTime + 's');
                 
-                results.edge = { response: responseTime, total: totalTime };
+                results.edge = { firstByte, total: parseFloat(totalTime) };
                 compareResults();
                 
-                const url = URL.createObjectURL(blob);
-                audio.src = url;
+                audio.src = URL.createObjectURL(blob);
+                audio.play().catch(() => {});
                 
-                audio.onloadedmetadata = () => {
-                    setStatus('statusEdge', `✅ 完成！时长 ${audio.duration.toFixed(1)}s`, 'success');
-                };
-                
-                audio.onerror = () => {
-                    setStatus('statusEdge', '❌ 音频加载失败', 'error');
-                };
-                
-                audio.play().catch(() => {
-                    setStatus('statusEdge', `✅ 完成！点击播放`, 'success');
-                });
+                setStatus('statusEdge', `✅ 完成！首字节 ${firstByte.toFixed(3)}s`, 'success');
                 
             } catch (error) {
                 setStatus('statusEdge', '❌ ' + error.message, 'error');
-                setMetric('edgeFirstByte', '错误');
             } finally {
                 btn.disabled = false;
             }
         }
         
-        // 加载保存的 API Key（仅从 localStorage）
+        // 加载保存的 API Key
         const savedKey = localStorage.getItem('edgetts_api_key');
-        if (savedKey) {
-            document.getElementById('edgeApiKey').value = savedKey;
-        }
+        if (savedKey) document.getElementById('edgeApiKey').value = savedKey;
     </script>
 </body>
 </html>
